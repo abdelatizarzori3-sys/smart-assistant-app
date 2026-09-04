@@ -1,0 +1,25 @@
+{
+  "name": "Smart Assistant App",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Smart Assistant App",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "postCreateCommand": "corepack enable && pnpm install --frozen-lockfile",
+  "postStartCommand": "bash -lc 'if ! pgrep -f \"tsx watch server/_core/index.ts\" >/dev/null; then nohup pnpm dev > /tmp/smart-assistant-dev.log 2>&1 & fi'",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "typescript.tsdk": "node_modules/typescript/lib"
+      }
+    }
+  }
+}

@@ -1,0 +1,60 @@
+name: تشغيل التطبيق مؤقتًا
+
+on:
+  workflow_dispatch:
+    inputs:
+      smoke_test_seconds:
+        description: "مدة انتظار الخادم قبل فحص الصحة"
+        required: false
+        default: "10"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    name: تشغيل وفحص التطبيق
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NODE_ENV: development
+
+    steps:
+      - name: جلب الكود
+        uses: actions/checkout@v4
+
+      - name: إعداد pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: إعداد Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: تثبيت الاعتمادات
+        run: pnpm install --frozen-lockfile
+
+      - name: فحص الأنواع والاختبارات
+        run: |
+          pnpm check
+          pnpm test
+
+      - name: تشغيل الخادم
+        run: |
+          nohup pnpm dev > /tmp/smart-assistant-dev.log 2>&1 &
+          echo $! > /tmp/smart-assistant-dev.pid
+          sleep "${{ inputs.smoke_test_seconds }}"
+
+      - name: فحص الصحة
+        run: curl --fail --retry 5 --retry-delay 2 --retry-connrefused http://127.0.0.1:3000/
+
+      - name: حفظ سجل الخادم عند انتهاء التشغيل
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-assistant-runtime-log
+          path: /tmp/smart-assistant-dev.log
+          if-no-files-found: ignore
