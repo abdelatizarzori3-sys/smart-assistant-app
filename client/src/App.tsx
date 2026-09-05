@@ -6,34 +6,39 @@ import DashboardLayout from "./components/DashboardLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import Landing from "./pages/Landing";
 import Library from "./pages/Library";
 import Tools from "./pages/Tools";
 
-function Router() {
+function WorkspaceRoutes() {
   return (
     <DashboardLayout>
       <Switch>
-        <Route path={"/"} component={Home} />
-        <Route path={"/tools"} component={Tools} />
-        <Route path={"/library"} component={Library} />
-        <Route path={"/404"} component={NotFound} />
+        <Route path="/workspace" component={Home} />
+        <Route path="/workspace/tools" component={Tools} />
+        <Route path="/workspace/library" component={Library} />
+        <Route path="/workspace/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>
     </DashboardLayout>
   );
 }
 
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
+function Router() {
+  return (
+    <Switch>
+      <Route path="/" component={Landing} />
+      <Route path="/workspace*" component={WorkspaceRoutes} />
+      <Route path="/404" component={NotFound} />
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
 
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-      >
+      <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
           <Router />

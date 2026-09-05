@@ -28,9 +28,9 @@ import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: MessageSquareText, label: "المحادثات", path: "/" },
-  { icon: WandSparkles, label: "الأدوات", path: "/tools" },
-  { icon: Archive, label: "المكتبة", path: "/library" },
+  { icon: MessageSquareText, label: "المحادثات", path: "/workspace" },
+  { icon: WandSparkles, label: "الأدوات", path: "/workspace/tools" },
+  { icon: Archive, label: "المكتبة", path: "/workspace/library" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "smart-assistant-sidebar-width";
@@ -92,7 +92,7 @@ function DashboardLayoutContent({
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
-  const activeMenuItem = menuItems.find(item => item.path === location);
+  const activeMenuItem = menuItems.find(item => item.path === location || location.startsWith(`${item.path}/`));
 
   useEffect(() => {
     const handleMouseMove = (event: MouseEvent) => {
@@ -130,7 +130,7 @@ function DashboardLayoutContent({
                 <PanelRight className="size-4" />
               </button>
               {!isCollapsed && (
-                <button onClick={() => setLocation("/")} className="flex min-w-0 items-center gap-2.5 text-right">
+                <button onClick={() => setLocation("/workspace")} className="flex min-w-0 items-center gap-2.5 text-right">
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#24332b] text-white shadow-md shadow-[#24332b]/15">
                     <Sparkles className="size-4" />
                   </span>
