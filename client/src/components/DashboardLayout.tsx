@@ -19,13 +19,11 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { Archive, LogOut, MessageSquareText, PanelRight, Sparkles, WandSparkles } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
-import { Button } from "./ui/button";
 
 const menuItems = [
   { icon: MessageSquareText, label: "المحادثات", path: "/workspace" },
@@ -39,36 +37,20 @@ const MIN_WIDTH = 220;
 const MAX_WIDTH = 420;
 const previewMode = typeof window !== "undefined" && import.meta.env.DEV && new URLSearchParams(window.location.search).get("preview") === "1";
 const previewUser = { name: "معاينة التصميم", email: "preview@local", role: "admin" as const };
+const guestUser = { name: "مساحتي في نواة", email: "guest@local", role: "user" as const };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
-  const { loading, user } = useAuth();
+  const { loading } = useAuth();
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
 
   if (loading && !previewMode) return <DashboardLayoutSkeleton />;
-
-  if (!user && !previewMode) {
-    return (
-      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-[#f7f4ee] p-6 text-right">
-        <div className="workspace-card w-full max-w-md p-9 text-center">
-          <div className="mx-auto mb-6 flex size-14 items-center justify-center rounded-2xl bg-[#24332b] text-white shadow-lg shadow-[#24332b]/15">
-            <Sparkles className="size-6" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#17221c]">مرحبًا بك في نواة</h1>
-          <p className="mt-3 text-sm leading-7 text-[#647069]">سجّل الدخول لفتح مساحة عملك الذكية والاحتفاظ بسياق محادثاتك وملفاتك.</p>
-          <Button onClick={() => startLogin()} size="lg" className="mt-8 w-full bg-[#24332b] text-white hover:bg-[#17221c]">
-            تسجيل الدخول للمتابعة
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <SidebarProvider style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
@@ -85,7 +67,7 @@ function DashboardLayoutContent({
   setSidebarWidth: (width: number) => void;
 }) {
   const { user, logout } = useAuth();
-  const displayedUser = user ?? (previewMode ? previewUser : null);
+  const displayedUser = user ?? (previewMode ? previewUser : guestUser);
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -178,12 +160,12 @@ function DashboardLayoutContent({
                   </Avatar>
                   <span className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
                     <span className="block truncate text-sm font-bold text-[#26342b]">{displayedUser?.name || "مساحة عملي"}</span>
-                    <span className="mt-0.5 block truncate text-[11px] text-[#89908c]">{previewMode ? "وضع معاينة محلي" : displayedUser?.role === "admin" ? "مالك مساحة العمل" : "عضو مساحة العمل"}</span>
+                    <span className="mt-0.5 block truncate text-[11px] text-[#89908c]">{previewMode ? "وضع معاينة محلي" : "جلسة مستقلة"}</span>
                   </span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-52">
-                <DropdownMenuItem onClick={() => previewMode ? window.location.assign("/") : logout()} className="cursor-pointer text-destructive focus:text-destructive">
+                <DropdownMenuItem onClick={() => logout()} className="cursor-pointer text-destructive focus:text-destructive">
                   <LogOut className="ml-2 size-4" />
                   <span>تسجيل الخروج</span>
                 </DropdownMenuItem>
