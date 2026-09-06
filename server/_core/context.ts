@@ -1,8 +1,9 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
+import { parse as parseCookieHeader } from "cookie";
+import { randomUUID } from "node:crypto";
 import * as db from "../db";
 import { sdk } from "./sdk";
-import { randomUUID } from "node:crypto";
 
 const GUEST_COOKIE = "nawaa_guest_id";
 const GUEST_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 365;
@@ -14,10 +15,10 @@ export type TrpcContext = {
 };
 
 async function getOrCreateGuestUser(opts: CreateExpressContextOptions): Promise<User | null> {
-  const isProduction = process.env.NODE_ENV === "production";
-  if (!isProduction || !process.env.DATABASE_URL) return null;
+  if (process.env.NODE_ENV !== "production" || !process.env.DATABASE_URL) return null;
 
-  const existing = opts.req.cookies?.[GUEST_COOKIE];
+  const cookies = parseCookieHeader(opts.req.headers.cookie ?? "");
+  const existing = cookies[GUEST_COOKIE];
   const guestId = typeof existing === "string" && /^[a-f0-9-]{20,80}$/i.test(existing) ? existing : randomUUID();
 
   if (!existing) {
