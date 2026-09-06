@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Redirect, Route, Switch } from "wouter";
 import DashboardLayout from "./components/DashboardLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -30,6 +30,10 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/tools" component={() => <Redirect to="/workspace/tools" replace />} />
+      <Route path="/tools/" component={() => <Redirect to="/workspace/tools" replace />} />
+      <Route path="/library" component={() => <Redirect to="/workspace/library" replace />} />
+      <Route path="/library/" component={() => <Redirect to="/workspace/library" replace />} />
       <Route path="/workspace/tools" component={WorkspaceTools} />
       <Route path="/workspace/library" component={WorkspaceLibrary} />
       <Route path="/workspace" component={WorkspaceHome} />
