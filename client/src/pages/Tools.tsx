@@ -1,10 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { BarChart3, Braces, FilePenLine, Loader2, Sparkles } from "lucide-react";
+import { BarChart3, Braces, FilePenLine, Github, Loader2, Rocket, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
 
+const GITHUB_REPO = "https://github.com/abdelatizarzori3-sys/smart-assistant-app";
+
 const workflows = [
+  {
+    id: "app-builder",
+    title: "إنتاج التطبيقات وربط GitHub",
+    description: "حوّل فكرتك إلى تطبيق كامل: تحليل المتطلبات، تصميم الواجهة، بناء المكونات والـAPI، إعداد قاعدة البيانات، الاختبارات، ثم تجهيز المشروع وربطه بمستودع GitHub.",
+    prompt: "أريد إنشاء تطبيق كامل من فكرة سأعطيك إياها. تعامل معي كمهندس منتج ومطور Full-Stack: ابدأ بتحليل الفكرة والمتطلبات، ثم اقترح المعمارية والتقنيات وقاعدة البيانات والواجهات. بعد موافقتي أنشئ خطة تنفيذية واضحة، واكتب الشيفرة والملفات المطلوبة، وأضف الاختبارات وإعدادات النشر. اجعل المشروع جاهزًا للرفع إلى GitHub والنشر على Railway أو Vercel. عند الحاجة، اطلب مني فقط المعلومات الضرورية.",
+    icon: Rocket,
+    tone: "bg-[#e7f3ec] text-[#2f7a50]",
+  },
   {
     id: "writing",
     title: "الكتابة والتحرير",
@@ -64,14 +74,22 @@ export default function Tools() {
   return (
     <div className="mx-auto max-w-[1240px]" dir="rtl">
       <section className="rounded-[2rem] bg-[#24332b] px-6 py-9 text-white shadow-[0_22px_60px_-35px_rgba(36,51,43,0.7)] sm:px-10 sm:py-12">
-        <div className="max-w-2xl">
-          <p className="text-[11px] font-bold tracking-[0.15em] text-[#f0cbb4]">مسارات العمل</p>
-          <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">ابدأ من هدف واضح، وليس من صفحة فارغة.</h1>
-          <p className="mt-4 text-sm leading-8 text-[#c7d1ca]">تجهّز هذه المسارات جلسة جديدة بإطار عمل عملي، ثم تنقلك إلى المحادثة لمتابعة التفاصيل والملفات والنتائج في مكان واحد.</p>
+        <div className="max-w-3xl">
+          <p className="text-[11px] font-bold tracking-[0.15em] text-[#f0cbb4]">مركز إنتاج التطبيقات</p>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">من فكرة إلى تطبيق جاهز للنشر.</h1>
+          <p className="mt-4 text-sm leading-8 text-[#c7d1ca]">استخدم مولد التطبيقات لبناء مشروع Full-Stack من الصفر، مع خطة تقنية، قاعدة بيانات، API، واجهة، اختبارات وتجهيز للنشر وربط GitHub.</p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button onClick={() => startWorkflow(workflows[0])} disabled={isBusy} className="h-11 rounded-xl bg-white px-5 text-[#24332b] hover:bg-[#eef2ef]">
+              {isBusy ? <Loader2 className="ml-2 size-4 animate-spin" /> : <Rocket className="ml-2 size-4" />} ابدأ إنتاج تطبيق
+            </Button>
+            <Button asChild variant="outline" className="h-11 rounded-xl border-white/20 bg-white/5 px-5 text-white hover:bg-white/10 hover:text-white">
+              <a href={GITHUB_REPO} target="_blank" rel="noreferrer"><Github className="ml-2 size-4" /> مستودع GitHub</a>
+            </Button>
+          </div>
         </div>
       </section>
 
-      <section className="mt-8 grid gap-5 md:grid-cols-3">
+      <section className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
         {workflows.map(workflow => {
           const Icon = workflow.icon;
           return (
@@ -87,7 +105,9 @@ export default function Tools() {
         })}
       </section>
 
-      <p className="mt-7 rounded-2xl border border-[#e4e0d7] bg-[#fbfaf7] px-5 py-4 text-xs leading-6 text-[#717b75]">تعمل المسارات كنقطة انطلاق منظمة؛ يمكنك إضافة التفاصيل أو تعديل اتجاه العمل داخل المحادثة في أي وقت.</p>
+      <section className="mt-7 rounded-2xl border border-[#e4e0d7] bg-[#fbfaf7] px-5 py-4 text-xs leading-6 text-[#717b75]">
+        <strong className="text-[#34433b]">مسار GitHub:</strong> بعد توليد التطبيق، يمكن تجهيز الملفات والمشروع ليكون مناسبًا للرفع إلى مستودع GitHub الحالي ثم نشره على Railway أو Vercel. رابط المستودع الحالي محفوظ داخل الأداة.
+      </section>
     </div>
   );
 }
