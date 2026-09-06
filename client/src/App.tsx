@@ -10,25 +10,29 @@ import Landing from "./pages/Landing";
 import Library from "./pages/Library";
 import Tools from "./pages/Tools";
 
-function WorkspaceRoutes() {
-  return (
-    <DashboardLayout>
-      <Switch>
-        <Route path="/workspace" component={Home} />
-        <Route path="/workspace/tools" component={Tools} />
-        <Route path="/workspace/library" component={Library} />
-        <Route path="/workspace/404" component={NotFound} />
-        <Route component={NotFound} />
-      </Switch>
-    </DashboardLayout>
-  );
+function WorkspaceShell({ children }: { children: React.ReactNode }) {
+  return <DashboardLayout>{children}</DashboardLayout>;
+}
+
+function WorkspaceHome() {
+  return <WorkspaceShell><Home /></WorkspaceShell>;
+}
+
+function WorkspaceTools() {
+  return <WorkspaceShell><Tools /></WorkspaceShell>;
+}
+
+function WorkspaceLibrary() {
+  return <WorkspaceShell><Library /></WorkspaceShell>;
 }
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
-      <Route path="/workspace*" component={WorkspaceRoutes} />
+      <Route path="/workspace/tools" component={WorkspaceTools} />
+      <Route path="/workspace/library" component={WorkspaceLibrary} />
+      <Route path="/workspace" component={WorkspaceHome} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
