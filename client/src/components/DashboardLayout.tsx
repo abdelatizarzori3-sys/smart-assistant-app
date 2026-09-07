@@ -24,6 +24,8 @@ import { Archive, LogOut, MessageSquareText, PanelRight, Sparkles, WandSparkles 
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
+import QuickSkills from "./QuickSkills";
+import ThinkingCompanion from "./ThinkingCompanion";
 
 const menuItems = [
   { icon: MessageSquareText, label: "المحادثات", path: "/workspace" },
@@ -190,7 +192,11 @@ function DashboardLayoutContent({
             <span className="flex size-8 items-center justify-center rounded-xl bg-[#24332b] text-white"><Sparkles className="size-3.5" /></span>
           </header>
         )}
-        <main className="min-h-screen p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="min-h-screen p-4 sm:p-6 lg:p-8">
+          {location === "/workspace" && <QuickSkills />}
+          {children}
+        </main>
+        <ThinkingCompanion />
       </SidebarInset>
     </>
   );
