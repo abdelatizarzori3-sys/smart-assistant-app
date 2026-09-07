@@ -16,11 +16,11 @@ export const workspaceMessages = mysqlTable("workspace_messages", {
 
 export const workspaceFiles = mysqlTable("workspace_files", {
   id: int("id").autoincrement().primaryKey(), userId: int("userId").notNull().references(() => users.id), sessionId: int("sessionId").references(() => workspaceSessions.id), fileName: varchar("fileName", { length: 255 }).notNull(), mimeType: varchar("mimeType", { length: 160 }).notNull(), sizeBytes: int("sizeBytes").notNull(), storageKey: varchar("storageKey", { length: 512 }).notNull().unique(), storageUrl: varchar("storageUrl", { length: 700 }).notNull(), status: mysqlEnum("status", ["ready", "processing", "failed"]).default("ready").notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("workspace_files_user_created_idx").on(table.userId, table.createdAt), index("workspace_files_session_created_idx").on(table.sessionId, workspaceFiles.id)]);
+}, table => [index("workspace_files_user_created_idx").on(table.userId, table.createdAt), index("workspace_files_session_created_idx").on(table.sessionId)]);
 
 export const workspaceResults = mysqlTable("workspace_results", {
   id: int("id").autoincrement().primaryKey(), userId: int("userId").notNull().references(() => users.id), sessionId: int("sessionId").notNull().references(() => workspaceSessions.id), messageId: int("messageId").notNull().references(() => workspaceMessages.id), title: varchar("title", { length: 240 }).notNull(), content: text("content").notNull(), model: varchar("model", { length: 120 }).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("workspace_results_user_created_idx").on(table.userId, table.createdAt), index("workspace_results_session_created_idx").on(table.sessionId, workspaceResults.createdAt)]);
+}, table => [index("workspace_results_user_created_idx").on(table.userId, table.createdAt)]);
 
 export const billingSubscriptions = mysqlTable("billing_subscriptions", {
   id: int("id").autoincrement().primaryKey(), userId: int("userId").notNull().references(() => users.id), planId: varchar("planId", { length: 32 }).default("free").notNull(), provider: varchar("provider", { length: 32 }).default("paypal").notNull(), providerSubscriptionId: varchar("providerSubscriptionId", { length: 190 }), status: mysqlEnum("status", ["active", "pending", "cancelled", "expired", "suspended"]).default("pending").notNull(), currentPeriodStart: timestamp("currentPeriodStart"), currentPeriodEnd: timestamp("currentPeriodEnd"), createdAt: timestamp("createdAt").defaultNow().notNull(), updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
