@@ -47,3 +47,5 @@ jobs:
 
       - name: بناء نسخة الإنتاج
         run: pnpm build
+
+# Triggered alongside the controlled LLM repair workflow.
