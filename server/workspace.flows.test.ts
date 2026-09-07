@@ -79,8 +79,15 @@ describe("workspace flows", () => {
   it("creates a new user-owned session", async () => {
     dbMocks.createWorkspaceSession.mockResolvedValue({ id: 8, userId: 7, title: "بحث جديد", status: "active", createdAt: now, updatedAt: now });
     const result = await appRouter.createCaller(createContext()).workspace.sessions.create({ title: "بحث جديد" });
-    expect(dbMocks.createWorkspaceSession).toHaveBeenCalledWith(7, "بحث جديد");
+    expect(dbMocks.createWorkspaceSession).toHaveBeenCalledWith(7, "بحث جديد", "general");
     expect(result.id).toBe(8);
+  });
+
+  it("creates a session inside the requested skill library", async () => {
+    dbMocks.createWorkspaceSession.mockResolvedValue({ id: 9, userId: 7, title: "تحليل", skillId: "data", status: "active", createdAt: now, updatedAt: now });
+    const result = await appRouter.createCaller(createContext()).workspace.sessions.create({ title: "تحليل", skillId: "data" });
+    expect(dbMocks.createWorkspaceSession).toHaveBeenCalledWith(7, "تحليل", "data");
+    expect(result.skillId).toBe("data");
   });
 
   it("stores a user message, invokes the approved model, and saves the generated result", async () => {

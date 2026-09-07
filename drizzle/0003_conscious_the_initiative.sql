@@ -1,0 +1,2 @@
+ALTER TABLE `workspace_sessions` ADD `skillId` varchar(80) DEFAULT 'general' NOT NULL;--> statement-breakpoint
+CREATE INDEX `workspace_sessions_user_skill_updated_idx` ON `workspace_sessions` (`userId`,`skillId`,`updatedAt`);

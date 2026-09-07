@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
 
 type AttachedFile = {
   id: number;
@@ -54,6 +55,7 @@ function fileToBase64(file: File) {
 
 export default function Home() {
   const utils = trpc.useUtils();
+  const [location] = useLocation();
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
@@ -63,6 +65,7 @@ export default function Home() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const requestedSessionId = Number(new URLSearchParams(location.split("?")[1] || "").get("sessionId") || 0);
   const sessionsQuery = trpc.workspace.sessions.list.useQuery();
   const messagesQuery = trpc.workspace.messages.list.useQuery(
     { sessionId: activeSessionId ?? 0 },
@@ -117,8 +120,12 @@ export default function Home() {
   const chatMessages = [...storedMessages, ...optimisticMessages];
 
   useEffect(() => {
+    if (requestedSessionId > 0 && sessions.some(session => session.id === requestedSessionId)) {
+      setActiveSessionId(requestedSessionId);
+      return;
+    }
     if (activeSessionId === null && sessions[0]) setActiveSessionId(sessions[0].id);
-  }, [activeSessionId, sessions]);
+  }, [activeSessionId, requestedSessionId, sessions]);
 
   useEffect(() => {
     setOptimisticMessages([]);

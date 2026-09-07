@@ -33,11 +33,15 @@ export const workspaceSessions = mysqlTable(
       .notNull()
       .references(() => users.id),
     title: varchar("title", { length: 240 }).notNull(),
+    skillId: varchar("skillId", { length: 80 }).default("general").notNull(),
     status: mysqlEnum("status", ["active", "archived"]).default("active").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  table => [index("workspace_sessions_user_updated_idx").on(table.userId, table.updatedAt)],
+  table => [
+    index("workspace_sessions_user_updated_idx").on(table.userId, table.updatedAt),
+    index("workspace_sessions_user_skill_updated_idx").on(table.userId, table.skillId, table.updatedAt),
+  ],
 );
 
 export const workspaceMessages = mysqlTable(

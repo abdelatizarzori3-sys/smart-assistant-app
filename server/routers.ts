@@ -13,6 +13,7 @@ import {
   getWorkspaceAdminOverview,
   listRecentWorkspaceResults,
   listWorkspaceFilesForSession,
+  listWorkspaceFilesForSkill,
   listWorkspaceFilesForUser,
   listWorkspaceMessages,
   listWorkspaceSessions,
@@ -99,10 +100,17 @@ export const appRouter = router({
 
   workspace: router({
     sessions: router({
-      list: protectedProcedure.query(({ ctx }) => listWorkspaceSessions(ctx.user.id)),
+      list: protectedProcedure
+        .input(z.object({ skillId: z.string().regex(/^[a-z0-9-]{1,80}$/).optional() }).optional())
+        .query(({ ctx, input }) => listWorkspaceSessions(ctx.user.id, input?.skillId)),
       create: protectedProcedure
-        .input(z.object({ title: z.string().trim().min(1).max(240).optional() }))
-        .mutation(({ ctx, input }) => createWorkspaceSession(ctx.user.id, input.title || "محادثة جديدة")),
+        .input(
+          z.object({
+            title: z.string().trim().min(1).max(240).optional(),
+            skillId: z.string().regex(/^[a-z0-9-]{1,80}$/).default("general"),
+          }),
+        )
+        .mutation(({ ctx, input }) => createWorkspaceSession(ctx.user.id, input.title || "محادثة جديدة", input.skillId)),
       get: protectedProcedure
         .input(z.object({ sessionId: z.number().int().positive() }))
         .query(({ ctx, input }) => requireOwnedSession(input.sessionId, ctx.user.id)),
@@ -205,6 +213,9 @@ export const appRouter = router({
           await requireOwnedSession(input.sessionId, ctx.user.id);
           return listWorkspaceFilesForSession(input.sessionId, ctx.user.id);
         }),
+      listForSkill: protectedProcedure
+        .input(z.object({ skillId: z.string().regex(/^[a-z0-9-]{1,80}$/) }))
+        .query(({ ctx, input }) => listWorkspaceFilesForSkill(ctx.user.id, input.skillId)),
       upload: protectedProcedure
         .input(
           z.object({
@@ -255,7 +266,9 @@ export const appRouter = router({
     }),
 
     library: router({
-      recentResults: protectedProcedure.query(({ ctx }) => listRecentWorkspaceResults(ctx.user.id)),
+      recentResults: protectedProcedure
+        .input(z.object({ skillId: z.string().regex(/^[a-z0-9-]{1,80}$/).optional() }).optional())
+        .query(({ ctx, input }) => listRecentWorkspaceResults(ctx.user.id, input?.skillId)),
     }),
 
     admin: router({

@@ -66,19 +66,21 @@ export async function getUserByOpenId(openId: string) {
   return result[0];
 }
 
-export async function createWorkspaceSession(userId: number, title: string) {
+export async function createWorkspaceSession(userId: number, title: string, skillId = "general") {
   const db = requireDb(await getDb());
-  const result = await db.insert(workspaceSessions).values({ userId, title });
+  const result = await db.insert(workspaceSessions).values({ userId, title, skillId });
   const id = Number(result[0].insertId);
   return getWorkspaceSessionForUser(id, userId);
 }
 
-export async function listWorkspaceSessions(userId: number) {
+export async function listWorkspaceSessions(userId: number, skillId?: string) {
   const db = requireDb(await getDb());
+  const conditions = [eq(workspaceSessions.userId, userId)];
+  if (skillId) conditions.push(eq(workspaceSessions.skillId, skillId));
   return db
     .select()
     .from(workspaceSessions)
-    .where(eq(workspaceSessions.userId, userId))
+    .where(and(...conditions))
     .orderBy(desc(workspaceSessions.updatedAt));
 }
 
@@ -181,6 +183,24 @@ export async function listWorkspaceFilesForSession(sessionId: number, userId: nu
     .orderBy(desc(workspaceFiles.createdAt));
 }
 
+export async function listWorkspaceFilesForSkill(userId: number, skillId: string) {
+  const db = requireDb(await getDb());
+  return db
+    .select({
+      id: workspaceFiles.id,
+      fileName: workspaceFiles.fileName,
+      mimeType: workspaceFiles.mimeType,
+      sizeBytes: workspaceFiles.sizeBytes,
+      status: workspaceFiles.status,
+      createdAt: workspaceFiles.createdAt,
+      sessionId: workspaceFiles.sessionId,
+    })
+    .from(workspaceFiles)
+    .innerJoin(workspaceSessions, eq(workspaceFiles.sessionId, workspaceSessions.id))
+    .where(and(eq(workspaceFiles.userId, userId), eq(workspaceSessions.skillId, skillId)))
+    .orderBy(desc(workspaceFiles.createdAt));
+}
+
 export async function getWorkspaceFilesByIdsForUser(fileIds: number[], userId: number) {
   if (fileIds.length === 0) return [];
   const db = requireDb(await getDb());
@@ -214,7 +234,7 @@ export async function createWorkspaceResult(input: {
   return created[0];
 }
 
-export async function listRecentWorkspaceResults(userId: number) {
+export async function listRecentWorkspaceResults(userId: number, skillId?: string) {
   const db = requireDb(await getDb());
   return db
     .select({
@@ -228,7 +248,11 @@ export async function listRecentWorkspaceResults(userId: number) {
     })
     .from(workspaceResults)
     .innerJoin(workspaceSessions, eq(workspaceResults.sessionId, workspaceSessions.id))
-    .where(eq(workspaceResults.userId, userId))
+    .where(
+      skillId
+        ? and(eq(workspaceResults.userId, userId), eq(workspaceSessions.skillId, skillId))
+        : eq(workspaceResults.userId, userId),
+    )
     .orderBy(desc(workspaceResults.createdAt))
     .limit(8);
 }
