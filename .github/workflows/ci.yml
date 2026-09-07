@@ -37,6 +37,7 @@ jobs:
       - name: تثبيت الاعتمادات
         run: pnpm install --no-frozen-lockfile
 
+      # Keep CI install resilient while the lockfile is synchronized.
       - name: فحص الأنواع
         run: pnpm check
 
