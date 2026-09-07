@@ -9,39 +9,15 @@ export type BillingPlan = {
 };
 
 /**
- * Monetization configuration is deliberately provider-neutral.
+ * Provider-neutral monetization configuration.
  * PayPal credentials and webhook secrets must live in Railway variables,
  * never in source control.
  */
 export const BILLING_PLANS: BillingPlan[] = [
-  {
-    id: "free",
-    name: "مجاني",
-    monthlyPriceUsd: 0,
-    monthlyMessages: 50,
-    features: ["المحادثة الأساسية", "المهارات الأساسية", "سياق الملفات المتاح"],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    monthlyPriceUsd: 9,
-    monthlyMessages: 2000,
-    features: ["جميع المهارات", "سياق أطول", "أولوية التنفيذ", "إنتاجية أعلى"],
-  },
-  {
-    id: "business",
-    name: "Business",
-    monthlyPriceUsd: 29,
-    monthlyMessages: 10000,
-    features: ["كل قدرات Pro", "مساحات عمل للفريق", "حدود استخدام أعلى", "إدارة الفريق"],
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    monthlyPriceUsd: null,
-    monthlyMessages: null,
-    features: ["خطة مخصصة", "دعم الشركات", "حدود واستخدام مخصصان"],
-  },
+  { id: "free", name: "مجاني", monthlyPriceUsd: 0, monthlyMessages: 50, features: ["المحادثة الأساسية", "المهارات الأساسية", "سياق الملفات المتاح"] },
+  { id: "pro", name: "Pro", monthlyPriceUsd: 9, monthlyMessages: 2000, features: ["جميع المهارات", "سياق أطول", "أولوية التنفيذ", "إنتاجية أعلى"] },
+  { id: "business", name: "Business", monthlyPriceUsd: 29, monthlyMessages: 10000, features: ["كل قدرات Pro", "مساحات عمل للفريق", "حدود استخدام أعلى", "إدارة الفريق"] },
+  { id: "enterprise", name: "Enterprise", monthlyPriceUsd: null, monthlyMessages: null, features: ["خطة مخصصة", "دعم الشركات", "حدود واستخدام مخصصان"] },
 ];
 
 export function getBillingPlan(id: string | undefined): BillingPlan {
@@ -50,8 +26,7 @@ export function getBillingPlan(id: string | undefined): BillingPlan {
 
 export function canUsePlanFeature(planId: string | undefined, feature: "advanced-skills" | "team-workspaces"): boolean {
   const plan = getBillingPlan(planId);
-  if (feature === "team-workspaces") return plan.id === "business" || plan.id === "enterprise";
-  return plan.id !== "free";
+  return feature === "team-workspaces" ? plan.id === "business" || plan.id === "enterprise" : plan.id !== "free";
 }
 
 export function getPayPalConfig() {
@@ -66,11 +41,5 @@ export function getPayPalConfig() {
 
 export function getBillingStatus() {
   const paypal = getPayPalConfig();
-  return {
-    provider: "paypal" as const,
-    configured: Boolean(paypal.clientId && paypal.clientSecretConfigured),
-    webhookConfigured: paypal.webhookConfigured,
-    mode: paypal.mode,
-    plans: BILLING_PLANS,
-  };
+  return { provider: "paypal" as const, configured: Boolean(paypal.clientId && paypal.clientSecretConfigured), webhookConfigured: paypal.webhookConfigured, mode: paypal.mode, plans: BILLING_PLANS };
 }
