@@ -65,6 +65,7 @@ describe("workspace flows", () => {
     dbMocks.getWorkspaceSessionForUser.mockResolvedValue({ id: 4, userId: 7, title: "محادثة جديدة", status: "active", createdAt: now, updatedAt: now });
     dbMocks.getWorkspaceFilesByIdsForUser.mockResolvedValue([]);
     dbMocks.listWorkspaceMessages.mockResolvedValue([]);
+    dbMocks.listRecentWorkspaceResults.mockResolvedValue([]);
     dbMocks.createWorkspaceMessage
       .mockResolvedValueOnce({ id: 11, sessionId: 4, role: "user", content: "اكتب خطة", createdAt: now })
       .mockResolvedValueOnce({ id: 12, sessionId: 4, role: "assistant", content: "هذه خطة عملية.", createdAt: now });
