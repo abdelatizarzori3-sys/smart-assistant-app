@@ -8,11 +8,7 @@ export type BillingPlan = {
   features: string[];
 };
 
-/**
- * Provider-neutral monetization configuration.
- * PayPal credentials and webhook secrets must live in Railway variables,
- * never in source control.
- */
+/** Provider-neutral monetization configuration. Payment secrets never belong in source control. */
 export const BILLING_PLANS: BillingPlan[] = [
   { id: "free", name: "مجاني", monthlyPriceUsd: 0, monthlyMessages: 50, features: ["المحادثة الأساسية", "المهارات الأساسية", "سياق الملفات المتاح"] },
   { id: "pro", name: "Pro", monthlyPriceUsd: 9, monthlyMessages: 2000, features: ["جميع المهارات", "سياق أطول", "أولوية التنفيذ", "إنتاجية أعلى"] },
