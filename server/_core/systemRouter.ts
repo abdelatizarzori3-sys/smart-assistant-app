@@ -1,29 +1,22 @@
 import { z } from "zod";
 import { notifyOwner } from "./notification";
+import { getBillingStatus } from "./billing";
+import { getCapabilityManifest } from "./capabilities";
 import { adminProcedure, publicProcedure, router } from "./trpc";
 
 export const systemRouter = router({
   health: publicProcedure
-    .input(
-      z.object({
-        timestamp: z.number().min(0, "timestamp cannot be negative"),
-      })
-    )
-    .query(() => ({
-      ok: true,
-    })),
+    .input(z.object({ timestamp: z.number().min(0, "timestamp cannot be negative") }))
+    .query(() => ({ ok: true })),
+
+  capabilities: publicProcedure.query(() => ({
+    assistant: "smart-workspace-agent",
+    capabilities: getCapabilityManifest(),
+  })),
+
+  billing: publicProcedure.query(() => getBillingStatus()),
 
   notifyOwner: adminProcedure
-    .input(
-      z.object({
-        title: z.string().min(1, "title is required"),
-        content: z.string().min(1, "content is required"),
-      })
-    )
-    .mutation(async ({ input }) => {
-      const delivered = await notifyOwner(input);
-      return {
-        success: delivered,
-      } as const;
-    }),
+    .input(z.object({ title: z.string().min(1, "title is required"), content: z.string().min(1, "content is required") }))
+    .mutation(async ({ input }) => ({ success: await notifyOwner(input) } as const)),
 });
