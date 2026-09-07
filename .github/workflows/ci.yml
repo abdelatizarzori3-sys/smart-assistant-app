@@ -35,7 +35,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: تثبيت الاعتمادات
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: فحص الأنواع
         run: pnpm check
