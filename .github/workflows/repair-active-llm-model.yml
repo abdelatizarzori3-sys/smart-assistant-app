@@ -1,9 +1,7 @@
 name: Repair active LLM model
 
 on:
-  push:
-    paths-ignore:
-      - '.github/workflows/repair-active-llm-model.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write
