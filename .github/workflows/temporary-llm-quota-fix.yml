@@ -1,0 +1,30 @@
+name: Temporary LLM quota fix
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Patch model preference and remove temporary workflow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('server/routers.ts')
+          s = p.read_text()
+          old = 'const PREFERRED_LLM_MODELS = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gpt-5-mini"];'
+          new = 'const PREFERRED_LLM_MODELS = ["gpt-5-mini", "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash"];'
+          if old not in s:
+              raise SystemExit('Expected model preference line was not found; no patch applied.')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          rm -f .github/workflows/temporary-llm-quota-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add server/routers.ts .github/workflows/temporary-llm-quota-fix.yml
+          git commit -m 'fix: avoid exhausted Gemini model as first choice'
+          git push
