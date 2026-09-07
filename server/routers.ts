@@ -32,6 +32,7 @@ const MAX_FILE_BYTES = 16 * 1024 * 1024;
 const MAX_HISTORY_MESSAGES = 30;
 const MAX_MEMORY_RESULTS = 5;
 const PREFERRED_LLM_MODELS = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gpt-5-mini"];
+const FALLBACK_LLM_MODEL = process.env.LLM_MODEL || "gemini-2.5-flash";
 
 const normalizeModelId = (id: string) => id.replace(/^models\//, "");
 
@@ -106,7 +107,7 @@ async function createFileAwarePrompt(input: {
         type: "file_url",
         file_url: {
           url: signedUrl,
-          mime_type: file.mimeType as "audio/mpeg" | "audio/wav" | "application/pdf" | "audio/mp4" | "video/mp4",
+          mime_type: file.mimeType as "audio/mpeg" | "audio/wav" | "audio/mp4" | "video/mp4",
         },
       });
       continue;
@@ -201,12 +202,17 @@ export const appRouter = router({
           const activeUserPrompt = await createFileAwarePrompt({ content: input.content, files });
           const recentResults = await listRecentWorkspaceResults(ctx.user.id);
           const conversationMemory = buildConversationMemory(input.content, recentResults);
-          const { data: models } = await listLLMModels();
-          const normalizedModels = models.map(item => ({ ...item, normalizedId: normalizeModelId(item.id) }));
-          const preferred = PREFERRED_LLM_MODELS.find(preferredId => normalizedModels.some(item => item.normalizedId === preferredId));
-          const selected = normalizedModels.find(item => item.normalizedId === preferred) ?? normalizedModels.find(item => item.normalizedId !== "gemini-2.5-flash");
-          const model = selected?.normalizedId ?? "gemini-3.8-flash";
-          if (!model) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "لا يتوفر نموذج لغوي حاليًا." });
+
+          let model = FALLBACK_LLM_MODEL;
+          try {
+            const { data: models } = await listLLMModels();
+            const normalizedModels = models.map(item => ({ ...item, normalizedId: normalizeModelId(item.id) }));
+            const preferred = PREFERRED_LLM_MODELS.find(preferredId => normalizedModels.some(item => item.normalizedId === preferredId));
+            const selected = normalizedModels.find(item => item.normalizedId === preferred) ?? normalizedModels.find(item => item.normalizedId !== "gemini-2.5-flash");
+            model = selected?.normalizedId ?? FALLBACK_LLM_MODEL;
+          } catch (error) {
+            console.warn("[workspace.messages.send] Model listing unavailable; using fallback model", error);
+          }
 
           try {
             const completion = await invokeLLM({
