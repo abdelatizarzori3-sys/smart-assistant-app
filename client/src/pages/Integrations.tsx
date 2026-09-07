@@ -11,7 +11,7 @@ const providers = [
   { id: "notion", name: "Notion", description: "ربط صفحات ومساحات Notion بموافقة المستخدم.", icon: Puzzle, available: false },
 ];
 
-type IntegrationStatus = { provider: string; connected: boolean; accountName: string | null; scopes: string[] };
+type IntegrationStatus = { id: string; connected: boolean; accountName: string | null; scopes: string[] };
 
 export default function Integrations() {
   const [statuses, setStatuses] = useState<Record<string, IntegrationStatus>>({});
@@ -23,7 +23,7 @@ export default function Integrations() {
       const response = await fetch("/api/integrations", { credentials: "include" });
       if (!response.ok) throw new Error("تعذر تحميل الاتصالات");
       const data = await response.json() as { providers: Array<IntegrationStatus & { name: string }> };
-      setStatuses(Object.fromEntries(data.providers.map(item => [item.provider, item])));
+      setStatuses(Object.fromEntries(data.providers.map(item => [item.id, item])));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر تحميل الاتصالات");
     } finally {
