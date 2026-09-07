@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { notifyOwner } from "./notification";
 import { getBillingStatus } from "./billing";
+import { getUserBillingState } from "./billingRuntime";
 import { getCapabilityManifest } from "./capabilities";
-import { adminProcedure, publicProcedure, router } from "./trpc";
+import { adminProcedure, protectedProcedure, publicProcedure, router } from "./trpc";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -15,6 +16,8 @@ export const systemRouter = router({
   })),
 
   billing: publicProcedure.query(() => getBillingStatus()),
+
+  myBilling: protectedProcedure.query(({ ctx }) => getUserBillingState(ctx.user.id)),
 
   notifyOwner: adminProcedure
     .input(z.object({ title: z.string().min(1, "title is required"), content: z.string().min(1, "content is required") }))
