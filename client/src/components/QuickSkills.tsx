@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { ArrowUpLeft, Sparkles } from "lucide-react";
 import { workflows } from "@/data/skillCatalog";
 
-const featured = ["code", "research", "writing", "content-analysis", "project", "learning", "debug", "data"];
+const featured = ["github", "code", "research", "writing", "content-analysis", "project", "learning", "debug"];
 
 export default function QuickSkills() {
   const [, setLocation] = useLocation();
