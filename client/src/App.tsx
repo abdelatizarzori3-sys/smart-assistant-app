@@ -10,27 +10,18 @@ import Landing from "./pages/Landing";
 import Library from "./pages/Library";
 import Tools from "./pages/Tools";
 import SkillLibrary from "./pages/SkillLibrary";
+import Integrations from "./pages/Integrations";
 import { useParams } from "wouter";
 
 function WorkspaceShell({ children }: { children: React.ReactNode }) {
   return <DashboardLayout>{children}</DashboardLayout>;
 }
 
-function WorkspaceHome() {
-  return <WorkspaceShell><Home /></WorkspaceShell>;
-}
-
-function WorkspaceTools() {
-  return <WorkspaceShell><Tools /></WorkspaceShell>;
-}
-
-function WorkspaceLibrary() {
-  return <WorkspaceShell><Library /></WorkspaceShell>;
-}
-
-function WorkspaceSkillLibrary() {
-  return <WorkspaceShell><SkillLibrary /></WorkspaceShell>;
-}
+function WorkspaceHome() { return <WorkspaceShell><Home /></WorkspaceShell>; }
+function WorkspaceTools() { return <WorkspaceShell><Tools /></WorkspaceShell>; }
+function WorkspaceLibrary() { return <WorkspaceShell><Library /></WorkspaceShell>; }
+function WorkspaceSkillLibrary() { return <WorkspaceShell><SkillLibrary /></WorkspaceShell>; }
+function WorkspaceIntegrations() { return <WorkspaceShell><Integrations /></WorkspaceShell>; }
 
 function LegacySkillRedirect() {
   const { skillId = "general" } = useParams<{ skillId: string }>();
@@ -49,6 +40,7 @@ function Router() {
       <Route path="/workspace/tools" component={WorkspaceTools} />
       <Route path="/workspace/tools/:skillId" component={WorkspaceSkillLibrary} />
       <Route path="/workspace/library" component={WorkspaceLibrary} />
+      <Route path="/workspace/integrations" component={WorkspaceIntegrations} />
       <Route path="/workspace" component={WorkspaceHome} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
