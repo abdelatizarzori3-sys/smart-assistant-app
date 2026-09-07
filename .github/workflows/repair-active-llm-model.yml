@@ -1,0 +1,35 @@
+name: Repair active LLM model
+
+on:
+  push:
+    paths-ignore:
+      - '.github/workflows/repair-active-llm-model.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select active Gemini fallback model
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('server/routers.ts')
+          s = p.read_text()
+          old = 'const PREFERRED_LLM_MODELS = ["gemini-2.5-flash", "gpt-5-mini", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.8-flash"];\nconst FALLBACK_LLM_MODEL = process.env.LLM_MODEL || "gemini-2.5-flash";'
+          new = 'const PREFERRED_LLM_MODELS = ["gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.8-flash", "gpt-5-mini"];\nconst FALLBACK_LLM_MODEL = process.env.LLM_MODEL || "gemini-3.6-flash";'
+          if old not in s:
+              raise SystemExit('Expected model configuration was not found; refusing to modify anything.')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Commit repair
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add server/routers.ts
+          git commit -m 'fix: use active Gemini fallback model'
+          git push
