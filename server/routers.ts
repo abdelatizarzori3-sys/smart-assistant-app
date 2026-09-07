@@ -31,8 +31,8 @@ import { systemRouter } from "./_core/systemRouter";
 const MAX_FILE_BYTES = 16 * 1024 * 1024;
 const MAX_HISTORY_MESSAGES = 30;
 const MAX_MEMORY_RESULTS = 5;
-const PREFERRED_LLM_MODELS = ["gemini-2.5-flash", "gpt-5-mini", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.8-flash"];
-const FALLBACK_LLM_MODEL = process.env.LLM_MODEL || "gemini-2.5-flash";
+const PREFERRED_LLM_MODELS = ["gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.8-flash", "gpt-5-mini"];
+const FALLBACK_LLM_MODEL = process.env.LLM_MODEL || "gemini-3.6-flash";
 
 const normalizeModelId = (id: string) => id.replace(/^models\//, "");
 
