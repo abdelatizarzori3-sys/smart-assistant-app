@@ -48,3 +48,10 @@ export async function getGithubFile(userId: number, owner: string, repo: string,
     `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path.split("/").map(encodeURIComponent).join("/")}${query}`,
   );
 }
+
+export async function getGithubFileText(userId: number, owner: string, repo: string, path: string, ref?: string) {
+  const file = await getGithubFile(userId, owner, repo, path, ref);
+  if (!file.content || file.encoding !== "base64") return { ...file, text: "" };
+  const text = Buffer.from(file.content.replace(/\s/g, ""), "base64").toString("utf8").slice(0, 120_000);
+  return { ...file, text };
+}
