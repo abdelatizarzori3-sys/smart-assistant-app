@@ -19,7 +19,7 @@ import {
   listWorkspaceSessions,
   updateWorkspaceSessionTitle,
 } from "./db";
-import { invokeLLM, listLLMModels, type Message as LlmMessage, type Tool, type ToolCall } from "./_core/llm";
+import { invokeLLM, listLLMModels, type Message as LlmMessage } from "./_core/llm";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { storageGetSignedUrl, storagePut } from "./storage";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -28,13 +28,10 @@ import { COOKIE_NAME } from "@shared/const";
 import { createSessionTitle, extractAssistantText, isSupportedAudio } from "./workspaceUtils";
 import { systemRouter } from "./_core/systemRouter";
 import { getCapability } from "./_core/capabilities";
-import { getUserIntegration } from "./integrationsDb";
-import { getGithubFile, getGithubRepo, listGithubRepos } from "./_core/github";
 
 const MAX_FILE_BYTES = 16 * 1024 * 1024;
 const MAX_HISTORY_MESSAGES = 30;
 const MAX_MEMORY_RESULTS = 5;
-const MAX_GITHUB_TOOL_ROUNDS = 4;
 const PREFERRED_LLM_MODELS = ["gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.8-flash", "gpt-5-mini"];
 const FALLBACK_LLM_MODEL = process.env.LLM_MODEL || "gemini-3.6-flash";
 
@@ -150,74 +147,6 @@ async function createFileAwarePrompt(input: {
   return parts[0];
 }
 
-const GITHUB_TOOLS: Tool[] = [
-  {
-    type: "function",
-    function: {
-      name: "github_list_repos",
-      description: "قراءة قائمة مستودعات GitHub المتاحة للمستخدم المتصل. أداة قراءة فقط.",
-      parameters: { type: "object", properties: {}, additionalProperties: false },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "github_get_repo",
-      description: "قراءة معلومات مستودع GitHub محدد. أداة قراءة فقط.",
-      parameters: {
-        type: "object",
-        properties: { owner: { type: "string" }, repo: { type: "string" } },
-        required: ["owner", "repo"],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "github_get_file",
-      description: "قراءة ملف نصي من مستودع GitHub محدد، مع إمكانية تحديد الفرع أو المرجع. أداة قراءة فقط.",
-      parameters: {
-        type: "object",
-        properties: { owner: { type: "string" }, repo: { type: "string" }, path: { type: "string" }, ref: { type: "string" } },
-        required: ["owner", "repo", "path"],
-        additionalProperties: false,
-      },
-    },
-  },
-];
-
-function parseToolArguments(call: ToolCall) {
-  try {
-    const parsed = JSON.parse(call.function.arguments || "{}");
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
-  } catch {
-    throw new Error("تعذر قراءة معاملات أداة GitHub.");
-  }
-}
-
-async function executeGithubTool(userId: number, call: ToolCall) {
-  const args = parseToolArguments(call);
-  if (call.function.name === "github_list_repos") return listGithubRepos(userId);
-
-  const owner = typeof args.owner === "string" ? args.owner.trim() : "";
-  const repo = typeof args.repo === "string" ? args.repo.trim() : "";
-  if (!/^[A-Za-z0-9_.-]{1,100}$/.test(owner) || !/^[A-Za-z0-9_.-]{1,100}$/.test(repo)) {
-    throw new Error("يجب تحديد owner وrepo صالحين في GitHub.");
-  }
-
-  if (call.function.name === "github_get_repo") return getGithubRepo(userId, owner, repo);
-  if (call.function.name === "github_get_file") {
-    const path = typeof args.path === "string" ? args.path.trim() : "";
-    const ref = typeof args.ref === "string" ? args.ref.trim() : undefined;
-    if (!path || path.length > 500 || path.includes("..")) throw new Error("مسار ملف GitHub غير صالح.");
-    if (ref && ref.length > 200) throw new Error("مرجع GitHub غير صالح.");
-    return getGithubFile(userId, owner, repo, path, ref);
-  }
-
-  throw new Error(`أداة غير معروفة: ${call.function.name}`);
-}
-
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -284,11 +213,20 @@ export const appRouter = router({
           await attachWorkspaceFilesToSession(input.fileIds, ctx.user.id, input.sessionId);
 
           const history = await listWorkspaceMessages(input.sessionId);
-          const userMessage = await createWorkspaceMessage({ sessionId: input.sessionId, role: "user", content: input.content });
+          const userMessage = await createWorkspaceMessage({
+            sessionId: input.sessionId,
+            role: "user",
+            content: input.content,
+          });
 
-          if (history.length === 0 && session.title === "محادثة جديدة") await updateWorkspaceSessionTitle(input.sessionId, ctx.user.id, createSessionTitle(input.content));
+          if (history.length === 0 && session.title === "محادثة جديدة") {
+            await updateWorkspaceSessionTitle(input.sessionId, ctx.user.id, createSessionTitle(input.content));
+          }
 
-          const historyMessages: LlmMessage[] = history.slice(-MAX_HISTORY_MESSAGES).map(message => ({ role: message.role, content: message.content }));
+          const historyMessages: LlmMessage[] = history.slice(-MAX_HISTORY_MESSAGES).map(message => ({
+            role: message.role,
+            content: message.content,
+          }));
           const activeUserPrompt = await createFileAwarePrompt({ content: input.content, files });
           const recentResults = await listRecentWorkspaceResults(ctx.user.id);
           const conversationMemory = buildConversationMemory(input.content, recentResults);
@@ -310,45 +248,111 @@ export const appRouter = router({
           }
 
           try {
-            const githubRequested = /github|مستودع|repository|pull request|commit|برنش|فرع/i.test(input.content);
-            const githubConnected = githubRequested && !!(await getUserIntegration(ctx.user.id, "github"));
-            const tools = githubConnected ? GITHUB_TOOLS : undefined;
-            const baseMessages: LlmMessage[] = [
-              { role: "system", content: `${userFacingAssistantInstructions}${capabilityContext}${githubConnected ? "\n\nاتصال GitHub متاح. يمكنك استخدام أدوات GitHub للقراءة فقط عندما تحتاج بيانات فعلية. لا تدّع تنفيذ تعديل أو حذف أو commit؛ هذه الأدوات لا تملك صلاحيات كتابة." : ""}${conversationMemory}` },
-              ...historyMessages,
-              { role: "user", content: activeUserPrompt },
-            ];
-
-            let workingMessages = baseMessages;
-            let completion = await invokeLLM({ model, maxTokens: 1800, messages: workingMessages, tools });
-            for (let round = 0; round < MAX_GITHUB_TOOL_ROUNDS; round++) {
-              const toolCalls = completion.choices[0]?.message.tool_calls ?? [];
-              if (toolCalls.length === 0) break;
-
-              const assistantContent = completion.choices[0]?.message.content ?? "";
-              workingMessages = [
-                ...workingMessages,
-                { role: "assistant", content: assistantContent, name: undefined },
-              ];
-              for (const call of toolCalls) {
-                try {
-                  const output = await executeGithubTool(ctx.user.id, call);
-                  workingMessages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(output).slice(0, 20000) });
-                } catch (toolError) {
-                  const message = toolError instanceof Error ? toolError.message : "تعذر تنفيذ أداة GitHub.";
-                  workingMessages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ error: message }) });
-                }
-              }
-              completion = await invokeLLM({ model, maxTokens: 1800, messages: workingMessages, tools });
-            }
-
+            const completion = await invokeLLM({
+              model,
+              maxTokens: 1800,
+              messages: [
+                { role: "system", content: `${userFacingAssistantInstructions}${capabilityContext}${conversationMemory}` },
+                ...historyMessages,
+                { role: "user", content: activeUserPrompt },
+              ],
+            });
             const rawContent = completion.choices[0]?.message.content;
             const content = rawContent ? extractAssistantText(rawContent as string | Array<{ type: "text"; text: string }>) : "لم أتمكن من إنشاء رد في هذه المحاولة.";
-            const assistantMessage = await createWorkspaceMessage({ sessionId: input.sessionId, role: "assistant", content });
-            const result = await createWorkspaceResult({ userId: ctx.user.id, sessionId: input.sessionId, messageId: assistantMessage.id, title: createSessionTitle(content), content, model });
+            const assistantMessage = await createWorkspaceMessage({
+              sessionId: input.sessionId,
+              role: "assistant",
+              content,
+            });
+            const result = await createWorkspaceResult({
+              userId: ctx.user.id,
+              sessionId: input.sessionId,
+              messageId: assistantMessage.id,
+              title: createSessionTitle(content),
+              content,
+              model,
+            });
             return { userMessage, assistantMessage, result, model, capability: capability?.id ?? "writing" };
           } catch (error) {
             console.error("[workspace.messages.send]", error);
             throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذّر توليد الرد الآن. حاول مرة أخرى بعد لحظات." });
           }
         }),
+    }),
+
+    files: router({
+      list: protectedProcedure.query(({ ctx }) => listWorkspaceFilesForUser(ctx.user.id)),
+      listForSession: protectedProcedure
+        .input(z.object({ sessionId: z.number().int().positive() }))
+        .query(async ({ ctx, input }) => {
+          await requireOwnedSession(input.sessionId, ctx.user.id);
+          return listWorkspaceFilesForSession(input.sessionId, ctx.user.id);
+        }),
+      listForSkill: protectedProcedure
+        .input(z.object({ skillId: z.string().regex(/^[a-z0-9-]{1,80}$/) }))
+        .query(({ ctx, input }) => listWorkspaceFilesForSkill(ctx.user.id, input.skillId)),
+      upload: protectedProcedure
+        .input(
+          z.object({
+            fileName: z.string().trim().min(1).max(255),
+            mimeType: z.string().trim().min(1).max(160),
+            sizeBytes: z.number().int().positive().max(MAX_FILE_BYTES),
+            dataBase64: z.string().min(1).max(24_000_000),
+            sessionId: z.number().int().positive().nullable().optional(),
+          }),
+        )
+        .mutation(async ({ ctx, input }) => {
+          if (input.sessionId) await requireOwnedSession(input.sessionId, ctx.user.id);
+          const buffer = Buffer.from(input.dataBase64, "base64");
+          if (buffer.byteLength === 0 || buffer.byteLength !== input.sizeBytes || buffer.byteLength > MAX_FILE_BYTES) {
+            throw inputError("تعذّر التحقق من حجم الملف. الحد الأقصى للملف هو 16 ميغابايت.");
+          }
+          const safeName = sanitizeFileName(input.fileName);
+          const { key, url } = await storagePut(`users/${ctx.user.id}/${Date.now()}-${safeName}`, buffer, input.mimeType);
+          return createWorkspaceFile({
+            userId: ctx.user.id,
+            sessionId: input.sessionId ?? null,
+            fileName: input.fileName,
+            mimeType: input.mimeType,
+            sizeBytes: input.sizeBytes,
+            storageKey: key,
+            storageUrl: url,
+          });
+        }),
+    }),
+
+    voice: router({
+      transcribe: protectedProcedure
+        .input(z.object({ fileId: z.number().int().positive() }))
+        .mutation(async ({ ctx, input }) => {
+          const files = await getWorkspaceFilesByIdsForUser([input.fileId], ctx.user.id);
+          const file = files[0];
+          if (!file) throw notFound("لم يتم العثور على التسجيل الصوتي.");
+          if (!isSupportedAudio(file.mimeType)) throw inputError("يرجى اختيار ملف صوتي بصيغة مدعومة.");
+          const audioUrl = await storageGetSignedUrl(file.storageKey);
+          const result = await transcribeAudio({
+            audioUrl,
+            language: "ar",
+            prompt: "حوّل كلام المستخدم العربي إلى نص واضح مع الحفاظ على المعنى.",
+          });
+          if ("error" in result) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذّر تحويل التسجيل إلى نص. تحقق من جودة الملف وحجمه." });
+          return { text: result.text, language: result.language };
+        }),
+    }),
+
+    library: router({
+      recentResults: protectedProcedure
+        .input(z.object({ skillId: z.string().regex(/^[a-z0-9-]{1,80}$/).optional() }).optional())
+        .query(({ ctx, input }) => listRecentWorkspaceResults(ctx.user.id, input?.skillId)),
+    }),
+
+    admin: router({
+      overview: adminProcedure.query(() => getWorkspaceAdminOverview()),
+      archiveSession: adminProcedure
+        .input(z.object({ sessionId: z.number().int().positive() }))
+        .mutation(({ input }) => archiveWorkspaceSessionAsAdmin(input.sessionId)),
+    }),
+  }),
+});
+
+export type AppRouter = typeof appRouter;
