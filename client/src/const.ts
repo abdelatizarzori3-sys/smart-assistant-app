@@ -2,20 +2,38 @@ import { OAUTH_STATE_COOKIE, encodeOAuthState } from "@shared/const";
 
 export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
-// Start the Manus OAuth login. Call this from an event handler or effect at the
-// moment you want to navigate, e.g. `onClick={() => startLogin()}`.
-//
-// It has SIDE EFFECTS — it mints a one-time nonce, writes the __Host- state
-// cookie, and navigates immediately — so the cookie nonce always matches the
-// `state` it sends. Do NOT call it during render (no `href={startLogin()}` /
-// `loginUrl={...}`): each call overwrites the cookie, so a stray render-phase
-// call would desync it from an in-flight login and the callback would reject it
-// with "invalid oauth state". It returns void by design, so there is no URL to
-// stash across renders.
-export const startLogin = () => {
-  const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
-  const appId = import.meta.env.VITE_APP_ID;
+// Start the Manus OAuth login. The server supplies the public app ID and
+// portal URL so Railway deployments do not depend on VITE_* build-time vars.
+// The existing VITE_* values remain supported as a fast path.
+export const startLogin = async () => {
   const redirectUri = `${window.location.origin}/api/oauth/callback`;
+
+  let oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL as string | undefined;
+  let appId = import.meta.env.VITE_APP_ID as string | undefined;
+
+  if (!oauthPortalUrl || !appId) {
+    try {
+      const response = await fetch("/api/oauth/config", {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      });
+      if (response.ok) {
+        const config = (await response.json()) as {
+          appId?: string;
+          portalUrl?: string;
+        };
+        appId = appId || config.appId;
+        oauthPortalUrl = oauthPortalUrl || config.portalUrl;
+      }
+    } catch (error) {
+      console.error("[OAuth] Failed to load login configuration", error);
+    }
+  }
+
+  if (!oauthPortalUrl || !appId) {
+    console.error("[OAuth] Login configuration is unavailable");
+    return;
+  }
 
   const nonce = crypto.randomUUID();
   document.cookie = `${OAUTH_STATE_COOKIE}=${nonce}; Path=/; Max-Age=600; SameSite=None; Secure`;
