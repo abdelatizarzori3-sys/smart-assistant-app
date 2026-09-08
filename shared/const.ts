@@ -10,9 +10,11 @@ export const NOT_ADMIN_ERR_MSG = 'You do not have required permission (10002)';
 // victim's browser.
 export const OAUTH_STATE_COOKIE = "__Host-oauth_state";
 
-// `state` carries the callback redirect URI (used at token exchange) plus the
-// CSRF nonce. Defined here so the client encoder and server decoder never drift.
-export type OAuthState = { redirectUri: string; nonce?: string };
+// `state` carries the callback redirect URI (used at token exchange), the CSRF
+// nonce, and an optional same-origin return path. Keeping the return path in
+// the signed-by-encoding state lets protected integrations send an unauthenticated
+// user through the normal login flow and then resume the original action.
+export type OAuthState = { redirectUri: string; nonce?: string; returnPath?: string };
 
 export const encodeOAuthState = (state: OAuthState): string =>
   btoa(JSON.stringify(state));
@@ -22,9 +24,6 @@ export const decodeOAuthState = (state: string): OAuthState => {
   try {
     decoded = atob(state);
   } catch {
-    // Malformed base64 (e.g. attacker-supplied garbage). Return no nonce so the
-    // callback's CSRF guard rejects it with 403 — never throw, since the caller
-    // runs outside the request handler's try/catch.
     return { redirectUri: "" };
   }
   try {
