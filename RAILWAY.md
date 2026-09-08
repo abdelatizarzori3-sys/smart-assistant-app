@@ -34,9 +34,13 @@
 | `VITE_APP_TITLE` | اختياري: عنوان التطبيق |
 | `VITE_APP_LOGO` | اختياري: شعار التطبيق |
 
-إذا كان رابط OAuth مضبوطًا على نطاق Railway، أضف نطاق Railway إلى إعدادات OAuth لدى المزود، واستخدم مسار callback الموجود في التطبيق:
+### GitHub OAuth
 
-`https://<نطاق-railway>/api/oauth/callback`
+عند تفعيل تكامل GitHub، يجب ضبط `GITHUB_CLIENT_ID` و`GITHUB_CLIENT_SECRET` في بيئة الخادم. ويمكن ضبط `APP_PUBLIC_URL` لتثبيت الأصل العام للتطبيق. مسار callback الفعلي الذي يستخدمه التطبيق هو:
+
+`https://<نطاق-railway>/api/integrations/github/callback`
+
+ويجب أن يطابق هذا المسار قيمة **Authorization callback URL** في تطبيق GitHub OAuth.
 
 ## قاعدة البيانات والتخزين
 
