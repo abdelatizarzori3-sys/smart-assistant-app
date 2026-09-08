@@ -3,6 +3,7 @@ import { parse as parseCookieHeader } from "cookie";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
+import { ENV } from "./env";
 import { sdk } from "./sdk";
 
 function getQueryParam(req: Request, key: string): string | undefined {
@@ -11,6 +12,18 @@ function getQueryParam(req: Request, key: string): string | undefined {
 }
 
 export function registerOAuthRoutes(app: Express) {
+  // Public, non-secret OAuth bootstrap configuration. The client ID is
+  // intentionally public; the client secret and server URL stay server-side.
+  // This also lets Railway deployments use OAUTH_CLIENT_ID without requiring
+  // a VITE_* build-time variable.
+  app.get("/api/oauth/config", (_req: Request, res: Response) => {
+    if (!ENV.appId) {
+      res.status(503).json({ error: "oauth_not_configured" });
+      return;
+    }
+    res.json({ appId: ENV.appId, portalUrl: ENV.oAuthPortalUrl });
+  });
+
   app.get("/api/oauth/callback", async (req: Request, res: Response) => {
     const code = getQueryParam(req, "code");
     const state = getQueryParam(req, "state");
