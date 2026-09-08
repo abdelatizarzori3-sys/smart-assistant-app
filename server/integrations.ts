@@ -4,6 +4,7 @@ import { parse as parseCookieHeader } from "cookie";
 import { ENV } from "./_core/env";
 import { sdk } from "./_core/sdk";
 import { deleteUserIntegration, getUserIntegration, listUserIntegrations, upsertUserIntegration } from "./integrationsDb";
+import { OAUTH_STATE_COOKIE, encodeOAuthState } from "@shared/const";
 
 const PROVIDERS = {
   github: {
@@ -68,6 +69,40 @@ async function requireUser(req: Request) {
   return sdk.authenticateRequest(req);
 }
 
+function buildLoginResumePath(providerId: ProviderId, redirectPath: string) {
+  const start = new URLSearchParams({ redirect: redirectPath });
+  return `/api/integrations/${providerId}/start?${start.toString()}`;
+}
+
+function redirectToAppLogin(req: Request, res: Response, providerId: ProviderId, redirectPath: string) {
+  if (!ENV.appId || !ENV.oAuthPortalUrl) {
+    return res.status(401).json({ error: "unauthorized", message: "تسجيل الدخول مطلوب قبل ربط الحساب." });
+  }
+
+  const returnPath = buildLoginResumePath(providerId, redirectPath);
+  const nonce = crypto.randomBytes(32).toString("base64url");
+  const state = encodeOAuthState({
+    redirectUri: `${publicOrigin(req)}/api/oauth/callback`,
+    nonce,
+    returnPath,
+  });
+
+  res.cookie(OAUTH_STATE_COOKIE, nonce, {
+    httpOnly: false,
+    secure: true,
+    sameSite: "none",
+    path: "/",
+    maxAge: 10 * 60 * 1000,
+  });
+
+  const url = new URL(`${ENV.oAuthPortalUrl.replace(/\/$/, "")}/app-auth`);
+  url.searchParams.set("appId", ENV.appId);
+  url.searchParams.set("redirectUri", `${publicOrigin(req)}/api/oauth/callback`);
+  url.searchParams.set("state", state);
+  url.searchParams.set("type", "signIn");
+  return res.redirect(302, url.toString());
+}
+
 export function registerIntegrationRoutes(app: Express) {
   app.get("/api/integrations", async (req, res) => {
     try {
@@ -89,18 +124,20 @@ export function registerIntegrationRoutes(app: Express) {
   });
 
   app.get("/api/integrations/:provider/start", async (req, res) => {
+    const providerId = req.params.provider as ProviderId;
+    const provider = providerOr404(providerId);
+    if (!provider) return res.status(404).json({ error: "provider_not_supported" });
+
+    const redirectPath = isSafeRedirectPath(req.query.redirect) ? req.query.redirect : "/workspace/integrations";
+
     try {
       await requireUser(req);
-      const providerId = req.params.provider as ProviderId;
-      const provider = providerOr404(providerId);
-      if (!provider) return res.status(404).json({ error: "provider_not_supported" });
       const { clientId, clientSecret } = getGithubConfig();
       if (providerId === "github" && (!clientId || !clientSecret)) {
         return res.status(503).json({ error: "github_oauth_not_configured", message: "GITHUB_CLIENT_ID و GITHUB_CLIENT_SECRET غير مهيئين بعد." });
       }
 
       const nonce = crypto.randomBytes(32).toString("base64url");
-      const redirectPath = isSafeRedirectPath(req.query.redirect) ? req.query.redirect : "/workspace/integrations";
       const state = buildState(nonce, redirectPath);
       res.cookie(STATE_COOKIE, nonce, {
         httpOnly: true,
@@ -117,8 +154,8 @@ export function registerIntegrationRoutes(app: Express) {
       url.searchParams.set("state", state);
       return res.redirect(302, url.toString());
     } catch (error) {
-      console.error("[Integrations] start failed", error);
-      return res.status(401).json({ error: "unauthorized" });
+      console.warn("[Integrations] login required; resuming after app auth", error);
+      return redirectToAppLogin(req, res, providerId, redirectPath);
     }
   });
 
