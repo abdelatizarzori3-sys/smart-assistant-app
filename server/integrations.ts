@@ -48,6 +48,10 @@ function encrypt(value: string) {
   return `${iv.toString("base64url")}.${cipher.getAuthTag().toString("base64url")}.${encrypted.toString("base64url")}`;
 }
 
+function isSafeRedirectPath(value: unknown): value is string {
+  return typeof value === "string" && /^\/(?!\/)/.test(value) && !/[\r\n]/.test(value);
+}
+
 function buildState(nonce: string, redirectPath: string) {
   return Buffer.from(JSON.stringify({ nonce, redirectPath }), "utf8").toString("base64url");
 }
@@ -96,7 +100,7 @@ export function registerIntegrationRoutes(app: Express) {
       }
 
       const nonce = crypto.randomBytes(32).toString("base64url");
-      const redirectPath = typeof req.query.redirect === "string" && req.query.redirect.startsWith("/") ? req.query.redirect : "/workspace/integrations";
+      const redirectPath = isSafeRedirectPath(req.query.redirect) ? req.query.redirect : "/workspace/integrations";
       const state = buildState(nonce, redirectPath);
       res.cookie(STATE_COOKIE, nonce, {
         httpOnly: true,
@@ -168,7 +172,7 @@ export function registerIntegrationRoutes(app: Express) {
         scopes: token.scope || provider.scopes.join(" "),
       });
 
-      const redirectPath = state.redirectPath.startsWith("/") ? state.redirectPath : "/workspace/integrations";
+      const redirectPath = isSafeRedirectPath(state.redirectPath) ? state.redirectPath : "/workspace/integrations";
       return res.redirect(302, `${publicOrigin(req)}${redirectPath}?connected=${encodeURIComponent(providerId)}`);
     } catch (error) {
       console.error("[Integrations] callback failed", error);
