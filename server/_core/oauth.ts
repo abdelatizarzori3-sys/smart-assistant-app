@@ -11,11 +11,13 @@ function getQueryParam(req: Request, key: string): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+function safeReturnPath(value: unknown): string {
+  return typeof value === "string" && /^\/(?!\/)/.test(value) && !/[\r\n]/.test(value)
+    ? value
+    : "/";
+}
+
 export function registerOAuthRoutes(app: Express) {
-  // Public, non-secret OAuth bootstrap configuration. The client ID is
-  // intentionally public; the client secret and server URL stay server-side.
-  // This also lets Railway deployments use OAUTH_CLIENT_ID without requiring
-  // a VITE_* build-time variable.
   app.get("/api/oauth/config", (_req: Request, res: Response) => {
     if (!ENV.appId) {
       res.status(503).json({ error: "oauth_not_configured" });
@@ -33,10 +35,7 @@ export function registerOAuthRoutes(app: Express) {
       return;
     }
 
-    // CSRF guard: the nonce in `state` must match the one-time cookie that
-    // startLogin set in the browser that began this login. An attacker can
-    // forge `state`, but cannot plant this cookie in the victim's browser.
-    const { nonce } = decodeOAuthState(state);
+    const { nonce, returnPath } = decodeOAuthState(state);
     const expectedNonce = parseCookieHeader(req.headers.cookie ?? "")[OAUTH_STATE_COOKIE];
     if (!nonce || nonce !== expectedNonce) {
       res.status(403).json({ error: "invalid oauth state" });
@@ -69,7 +68,7 @@ export function registerOAuthRoutes(app: Express) {
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-      res.redirect(302, "/");
+      res.redirect(302, safeReturnPath(returnPath));
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
       res.status(500).json({ error: "OAuth callback failed" });
