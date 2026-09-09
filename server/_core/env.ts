@@ -1,7 +1,9 @@
 export const ENV = {
   // Keep compatibility with both the original Manus/Vite variable names and
   // the server-side OAuth names used by independent Railway deployments.
-  appId: process.env.VITE_APP_ID ?? process.env.OAUTH_CLIENT_ID ?? "",
+  // A dedicated MANUS_APP_ID prevents GitHub OAuth credentials from being
+  // accidentally reused as the Manus login application id.
+  appId: process.env.MANUS_APP_ID ?? process.env.VITE_APP_ID ?? process.env.OAUTH_CLIENT_ID ?? "",
   cookieSecret: process.env.JWT_SECRET ?? "",
   databaseUrl: process.env.DATABASE_URL ?? "",
   oAuthServerUrl:
