@@ -115,7 +115,14 @@ const normalizeToolChoice = (toolChoice: ToolChoice | undefined, tools: Tool[] |
   return toolChoice;
 };
 
-const resolveApiUrl = () => ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0 ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions` : "https://forge.manus.im/v1/chat/completions";
+const resolveApiUrl = () => {
+  const configured = ENV.forgeApiUrl?.trim();
+  if (!configured) return "https://forge.manus.im/v1/chat/completions";
+  const base = configured.replace(/\/+$/, "");
+  if (/\/v1\/chat\/completions$/i.test(base)) return base;
+  if (/\/v1$/i.test(base)) return `${base}/chat/completions`;
+  return `${base}/v1/chat/completions`;
+};
 const assertApiKey = () => { if (!ENV.forgeApiKey) throw new Error("OPENAI_API_KEY is not configured"); };
 
 const normalizeResponseFormat = ({ responseFormat, response_format, outputSchema, output_schema }: { responseFormat?: ResponseFormat; response_format?: ResponseFormat; outputSchema?: OutputSchema; output_schema?: OutputSchema }): { type: "json_schema"; json_schema: JsonSchema } | { type: "text" } | { type: "json_object" } | undefined => {
