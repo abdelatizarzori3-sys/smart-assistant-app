@@ -85,6 +85,31 @@ export function AIChatBox({
     setShowCapabilities(false);
   };
 
+  const githubConnectUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/api/integrations/github/start?redirect=%2Fworkspace`
+    : "/api/integrations/github/start?redirect=%2Fworkspace";
+
+  const renderAssistantContent = (content: string) => {
+    const hasGitHubBlockedLink = /GitHub[\s\S]{0,160}\[blocked\]/i.test(content) || /\[blocked\][\s\S]{0,160}GitHub/i.test(content);
+    if (!hasGitHubBlockedLink) return <Streamdown>{content}</Streamdown>;
+
+    const parts = content.split("[blocked]");
+    return (
+      <>
+        <Streamdown>{parts[0]}</Streamdown>
+        <a
+          href={githubConnectUrl}
+          className="mt-2 inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground no-underline shadow-sm transition-opacity hover:opacity-90"
+        >
+          🔗 ربط حساب GitHub الآن
+        </a>
+        {parts.slice(1).map((part, index) => (
+          <Streamdown key={index}>{part}</Streamdown>
+        ))}
+      </>
+    );
+  };
+
   return (
     <div ref={containerRef} className={cn("flex flex-col bg-card text-card-foreground rounded-lg border shadow-sm", className)} style={{ height }}>
       <div className="flex items-center justify-between gap-3 border-b bg-background/80 px-4 py-3">
@@ -153,7 +178,7 @@ export function AIChatBox({
                   <div key={index} className={cn("flex gap-3", message.role === "user" ? "justify-end items-start" : "justify-start items-start")} style={shouldApplyMinHeight ? { minHeight: `${minHeightForLastMessage}px` } : undefined}>
                     {message.role === "assistant" && <div className="size-8 shrink-0 mt-1 rounded-full bg-primary/10 flex items-center justify-center"><Sparkles className="size-4 text-primary" /></div>}
                     <div className={cn("max-w-[80%] rounded-lg px-4 py-2.5", message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}>
-                      {message.role === "assistant" ? <div className="prose prose-sm dark:prose-invert max-w-none"><Streamdown>{message.content}</Streamdown></div> : <p className="whitespace-pre-wrap text-sm">{message.content}</p>}
+                      {message.role === "assistant" ? <div className="prose prose-sm dark:prose-invert max-w-none">{renderAssistantContent(message.content)}</div> : <p className="whitespace-pre-wrap text-sm">{message.content}</p>}
                     </div>
                     {message.role === "user" && <div className="size-8 shrink-0 mt-1 rounded-full bg-secondary flex items-center justify-center"><User className="size-4 text-secondary-foreground" /></div>}
                   </div>
