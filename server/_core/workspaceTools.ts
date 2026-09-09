@@ -1,12 +1,22 @@
 import { z } from "zod";
 import { getGithubFile, getGithubRepo, listGithubRepos } from "./github";
+import { getUserIntegration } from "../integrationsDb";
 import type { Tool, ToolCall } from "./llm";
 
 const githubListReposSchema = z.object({}).strict();
 const githubGetRepoSchema = z.object({ owner: z.string().trim().min(1).max(100), repo: z.string().trim().min(1).max(100) }).strict();
 const githubGetFileSchema = z.object({ owner: z.string().trim().min(1).max(100), repo: z.string().trim().min(1).max(100), path: z.string().trim().min(1).max(500), ref: z.string().trim().min(1).max(200).optional() }).strict();
+const githubConnectionStatusSchema = z.object({}).strict();
 
 export const GITHUB_WORKSPACE_TOOLS: Tool[] = [
+  {
+    type: "function",
+    function: {
+      name: "github_connection_status",
+      description: "التحقق من حالة ربط GitHub للمستخدم الحالي. إذا لم يكن مرتبطًا، تعيد الأداة رابط بدء الربط عبر OAuth الرسمي. استخدمها عند سؤال المستخدم عن حالة GitHub أو الاتصالات قبل إعطائه تعليمات عامة.",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
+    },
+  },
   {
     type: "function",
     function: {
@@ -51,6 +61,26 @@ function parseArguments(call: ToolCall) {
 export async function executeWorkspaceTool(userId: number, call: ToolCall) {
   const args = parseArguments(call);
   switch (call.function.name) {
+    case "github_connection_status": {
+      githubConnectionStatusSchema.parse(args);
+      const integration = await getUserIntegration(userId, "github");
+      if (!integration) {
+        return bounded({
+          connected: false,
+          provider: "github",
+          message: "GitHub غير مرتبط بهذا الحساب.",
+          connectUrl: "/api/integrations/github/start?redirect=%2Fworkspace",
+        });
+      }
+      return bounded({
+        connected: true,
+        provider: "github",
+        accountName: integration.accountName ?? null,
+        scopes: integration.scopes ? String(integration.scopes).split(" ").filter(Boolean) : [],
+        connectedAt: integration.createdAt,
+        updatedAt: integration.updatedAt,
+      });
+    }
     case "github_list_repos":
       githubListReposSchema.parse(args);
       return bounded(await listGithubRepos(userId));
