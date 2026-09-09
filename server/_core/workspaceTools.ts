@@ -7,9 +7,11 @@ const githubListReposSchema = z.object({}).strict();
 const githubGetRepoSchema = z.object({ owner: z.string().trim().min(1).max(100), repo: z.string().trim().min(1).max(100) }).strict();
 const githubGetFileSchema = z.object({ owner: z.string().trim().min(1).max(100), repo: z.string().trim().min(1).max(100), path: z.string().trim().min(1).max(500), ref: z.string().trim().min(1).max(200).optional() }).strict();
 const githubConnectionStatusSchema = z.object({}).strict();
+const githubConnectSchema = z.object({}).strict();
 
 export const GITHUB_WORKSPACE_TOOLS: Tool[] = [
   { type: "function", function: { name: "github_connection_status", description: "التحقق من حالة ربط GitHub للمستخدم الحالي. إذا لم يكن مرتبطًا، تعيد الأداة رابط بدء الربط عبر OAuth الرسمي. استخدمها عند سؤال المستخدم عن حالة GitHub أو الاتصالات قبل إعطائه تعليمات عامة.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
+  { type: "function", function: { name: "github_connect", description: "بدء ربط GitHub من داخل المحادثة. إذا لم يكن GitHub مرتبطًا، أعد رابط OAuth الرسمي القابل للنقر للمستخدم. لا تطلب مفاتيح أو رموز وصول من المستخدم داخل المحادثة.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
   { type: "function", function: { name: "github_list_repos", description: "قراءة قائمة مستودعات GitHub المتاحة للمستخدم المتصل فقط. أداة قراءة فقط.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
   { type: "function", function: { name: "github_get_repo", description: "قراءة معلومات مستودع GitHub محدد. أداة قراءة فقط.", parameters: { type: "object", properties: { owner: { type: "string" }, repo: { type: "string" } }, required: ["owner", "repo"], additionalProperties: false } } },
   { type: "function", function: { name: "github_get_file", description: "قراءة ملف من مستودع GitHub محدد مع إمكانية تحديد الفرع أو المرجع. أداة قراءة فقط.", parameters: { type: "object", properties: { owner: { type: "string" }, repo: { type: "string" }, path: { type: "string" }, ref: { type: "string" } }, required: ["owner", "repo", "path"], additionalProperties: false } } },
@@ -31,6 +33,17 @@ export async function executeWorkspaceTool(userId: number, call: ToolCall) {
       } catch (error) {
         console.error("[GitHub] connection status check failed", { userId, error });
         return bounded({ connected: false, provider: "github", error: "integration_status_unavailable", message: "تعذر فحص حالة ربط GitHub حاليًا. حاول مرة أخرى." });
+      }
+    }
+    case "github_connect": {
+      githubConnectSchema.parse(args);
+      try {
+        const integration = await getUserIntegration(userId, "github");
+        if (integration) return bounded({ connected: true, provider: "github", accountName: integration.accountName ?? null, message: "GitHub مرتبط بالفعل بهذا الحساب." });
+        return bounded({ connected: false, provider: "github", message: "GitHub غير مرتبط. افتح رابط الربط الرسمي التالي لإكمال OAuth ثم عد إلى المحادثة.", connectUrl: "/api/integrations/github/start?redirect=%2Fworkspace" });
+      } catch (error) {
+        console.error("[GitHub] connect check failed", { userId, error });
+        return bounded({ connected: false, provider: "github", error: "integration_status_unavailable", message: "تعذر بدء فحص ربط GitHub حاليًا. حاول مرة أخرى." });
       }
     }
     case "github_list_repos": githubListReposSchema.parse(args); return bounded(await listGithubRepos(userId));
