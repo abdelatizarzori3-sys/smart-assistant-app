@@ -43,6 +43,9 @@ function getGithubConfig() {
 }
 
 function encrypt(value: string) {
+  if (ENV.isProduction && !ENV.cookieSecret) {
+    throw new Error("JWT_SECRET is required to encrypt integration credentials in production.");
+  }
   const key = crypto.createHash("sha256").update(ENV.cookieSecret || "integration-secret").digest();
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
