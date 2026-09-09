@@ -38,6 +38,7 @@ function getGithubConfig() {
   return {
     clientId: process.env.GITHUB_CLIENT_ID?.trim() || "",
     clientSecret: process.env.GITHUB_CLIENT_SECRET?.trim() || "",
+    redirectUri: process.env.GITHUB_REDIRECT_URI?.trim() || "",
   };
 }
 
@@ -132,7 +133,7 @@ export function registerIntegrationRoutes(app: Express) {
 
     try {
       await requireUser(req);
-      const { clientId, clientSecret } = getGithubConfig();
+      const { clientId, clientSecret, redirectUri: configuredRedirectUri } = getGithubConfig();
       if (providerId === "github" && (!clientId || !clientSecret)) {
         return res.status(503).json({ error: "github_oauth_not_configured", message: "GITHUB_CLIENT_ID و GITHUB_CLIENT_SECRET غير مهيئين بعد." });
       }
@@ -146,7 +147,7 @@ export function registerIntegrationRoutes(app: Express) {
         path: "/",
         maxAge: STATE_MAX_AGE,
       });
-      const redirectUri = `${publicOrigin(req)}/api/integrations/${providerId}/callback`;
+      const redirectUri = configuredRedirectUri || `${publicOrigin(req)}/api/integrations/${providerId}/callback`;
       const url = new URL(provider.authorize);
       url.searchParams.set("client_id", clientId);
       url.searchParams.set("redirect_uri", redirectUri);
@@ -176,9 +177,9 @@ export function registerIntegrationRoutes(app: Express) {
 
     try {
       const user = await requireUser(req);
-      const { clientId, clientSecret } = getGithubConfig();
+      const { clientId, clientSecret, redirectUri: configuredRedirectUri } = getGithubConfig();
       if (providerId === "github" && (!clientId || !clientSecret)) return res.status(503).send("GitHub OAuth غير مهيأ على الخادم.");
-      const redirectUri = `${publicOrigin(req)}/api/integrations/${providerId}/callback`;
+      const redirectUri = configuredRedirectUri || `${publicOrigin(req)}/api/integrations/${providerId}/callback`;
       const tokenResponse = await fetch(provider.token, {
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
