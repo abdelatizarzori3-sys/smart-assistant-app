@@ -9,6 +9,8 @@ const githubGetFileSchema = z.object({ owner: z.string().trim().min(1).max(100),
 const githubConnectionStatusSchema = z.object({}).strict();
 const githubConnectSchema = z.object({}).strict();
 
+const GITHUB_CONNECT_URL = "/api/integrations/github/start?redirect=%2Fworkspace";
+
 export const GITHUB_WORKSPACE_TOOLS: Tool[] = [
   { type: "function", function: { name: "github_connection_status", description: "التحقق من حالة ربط GitHub للمستخدم الحالي. إذا لم يكن مرتبطًا، تعيد الأداة رابط بدء الربط عبر OAuth الرسمي. استخدمها عند سؤال المستخدم عن حالة GitHub أو الاتصالات قبل إعطائه تعليمات عامة.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
   { type: "function", function: { name: "github_connect", description: "بدء ربط GitHub من داخل المحادثة. إذا لم يكن GitHub مرتبطًا، أعد رابط OAuth الرسمي القابل للنقر للمستخدم. لا تطلب مفاتيح أو رموز وصول من المستخدم داخل المحادثة.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
@@ -28,11 +30,11 @@ export async function executeWorkspaceTool(userId: number, call: ToolCall) {
       githubConnectionStatusSchema.parse(args);
       try {
         const integration = await getUserIntegration(userId, "github");
-        if (!integration) return bounded({ connected: false, provider: "github", message: "GitHub غير مرتبط بهذا الحساب.", connectUrl: "/api/integrations/github/start?redirect=%2Fworkspace" });
+        if (!integration) return bounded({ connected: false, provider: "github", message: "GitHub غير مرتبط بهذا الحساب.", connectUrl: GITHUB_CONNECT_URL });
         return bounded({ connected: true, provider: "github", accountName: integration.accountName ?? null, scopes: integration.scopes ? String(integration.scopes).split(" ").filter(Boolean) : [], connectedAt: integration.createdAt, updatedAt: integration.updatedAt });
       } catch (error) {
         console.error("[GitHub] connection status check failed", { userId, error });
-        return bounded({ connected: false, provider: "github", error: "integration_status_unavailable", message: "تعذر فحص حالة ربط GitHub حاليًا. حاول مرة أخرى." });
+        return bounded({ connected: false, provider: "github", error: "integration_status_unavailable", message: "تعذر التأكد من الحالة حاليًا، لكن يمكنك بدء ربط GitHub مباشرة من هنا.", connectUrl: GITHUB_CONNECT_URL });
       }
     }
     case "github_connect": {
@@ -40,10 +42,10 @@ export async function executeWorkspaceTool(userId: number, call: ToolCall) {
       try {
         const integration = await getUserIntegration(userId, "github");
         if (integration) return bounded({ connected: true, provider: "github", accountName: integration.accountName ?? null, message: "GitHub مرتبط بالفعل بهذا الحساب." });
-        return bounded({ connected: false, provider: "github", message: "GitHub غير مرتبط. افتح رابط الربط الرسمي التالي لإكمال OAuth ثم عد إلى المحادثة.", connectUrl: "/api/integrations/github/start?redirect=%2Fworkspace" });
+        return bounded({ connected: false, provider: "github", message: "GitHub غير مرتبط. افتح رابط الربط الرسمي التالي لإكمال OAuth ثم عد إلى المحادثة.", connectUrl: GITHUB_CONNECT_URL });
       } catch (error) {
         console.error("[GitHub] connect check failed", { userId, error });
-        return bounded({ connected: false, provider: "github", error: "integration_status_unavailable", message: "تعذر بدء فحص ربط GitHub حاليًا. حاول مرة أخرى." });
+        return bounded({ connected: false, provider: "github", error: "integration_status_unavailable", message: "تعذر التأكد من الحالة، لكن يمكنك بدء ربط GitHub مباشرة من هنا.", connectUrl: GITHUB_CONNECT_URL });
       }
     }
     case "github_list_repos": githubListReposSchema.parse(args); return bounded(await listGithubRepos(userId));
