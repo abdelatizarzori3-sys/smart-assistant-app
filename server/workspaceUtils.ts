@@ -5,16 +5,7 @@ export function createSessionTitle(content: string) {
 }
 
 export function extractAssistantText(content: string | Array<{ type: "text"; text: string }>) {
-  const text = typeof content === "string"
-    ? content.trim()
-    : content
-        .filter(part => part?.type === "text" && typeof part.text === "string")
-        .map(part => part.text.trim())
-        .filter(Boolean)
-        .join("\n")
-        .trim();
-
-  return text || "لم أتمكن من إنشاء رد في هذه المحاولة.";
+  return typeof content === "string" ? content : content.map(part => part.text).join("\n");
 }
 
 export function isSupportedAudio(mimeType: string) {
