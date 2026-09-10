@@ -9,7 +9,7 @@ const githubGetFileSchema = z.object({ owner: z.string().trim().min(1).max(100),
 const githubConnectionStatusSchema = z.object({}).strict();
 const githubConnectSchema = z.object({}).strict();
 
-const GITHUB_CONNECT_URL = `${process.env.APP_PUBLIC_URL || "https://smart-assistant-app-production.up.railway.app"}/api/integrations/github/start?redirect=%2Fworkspace`;
+const GITHUB_CONNECT_URL = "/api/integrations/github/start?redirect=%2Fworkspace";
 
 export const GITHUB_WORKSPACE_TOOLS: Tool[] = [
   { type: "function", function: { name: "github_connection_status", description: "التحقق من حالة ربط GitHub للمستخدم الحالي. إذا لم يكن مرتبطًا، تعيد الأداة رابط بدء الربط عبر OAuth الرسمي. استخدمها عند سؤال المستخدم عن حالة GitHub أو الاتصالات قبل إعطائه تعليمات عامة.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
