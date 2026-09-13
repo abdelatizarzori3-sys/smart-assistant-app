@@ -9,32 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  backup:
-    runs-on: ubuntu-latest
-    environment: production
-    timeout-minutes: 20
-    if: ${{ secrets.BACKUP_AWS_ROLE_ARN != '' && secrets.DATABASE_URL != '' && vars.BACKUP_BUCKET != '' && vars.BACKUP_KMS_KEY_ID != '' && vars.AWS_REGION != '' }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.BACKUP_AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
-      - name: تثبيت عميل MySQL
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends mysql-client
-      - name: تنفيذ النسخة
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          BACKUP_BUCKET: ${{ vars.BACKUP_BUCKET }}
-          BACKUP_KMS_KEY_ID: ${{ vars.BACKUP_KMS_KEY_ID }}
-        run: bash scripts/ops/backup_database.sh
-
   configuration-check:
     name: تحقق من إعداد النسخ
     runs-on: ubuntu-latest
-    if: ${{ secrets.BACKUP_AWS_ROLE_ARN == '' || secrets.DATABASE_URL == '' || vars.BACKUP_BUCKET == '' || vars.BACKUP_KMS_KEY_ID == '' || vars.AWS_REGION == '' }}
     steps:
-      - run: echo "تم تخطي النسخ الاحتياطي بأمان؛ أضف أسرار AWS وقاعدة البيانات لتفعيله في الإنتاج."
+      - name: حالة الإعداد
+        run: echo "تم نشر Workflow النسخ الاحتياطي. يلزم إعداد أسرار AWS وقاعدة البيانات قبل تشغيل نسخة إنتاجية."
