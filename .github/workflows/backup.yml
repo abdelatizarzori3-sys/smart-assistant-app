@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 20
+    if: ${{ secrets.BACKUP_AWS_ROLE_ARN != '' && secrets.DATABASE_URL != '' && vars.BACKUP_BUCKET != '' && vars.BACKUP_KMS_KEY_ID != '' && vars.AWS_REGION != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -30,3 +31,10 @@ jobs:
           BACKUP_BUCKET: ${{ vars.BACKUP_BUCKET }}
           BACKUP_KMS_KEY_ID: ${{ vars.BACKUP_KMS_KEY_ID }}
         run: bash scripts/ops/backup_database.sh
+
+  configuration-check:
+    name: تحقق من إعداد النسخ
+    runs-on: ubuntu-latest
+    if: ${{ secrets.BACKUP_AWS_ROLE_ARN == '' || secrets.DATABASE_URL == '' || vars.BACKUP_BUCKET == '' || vars.BACKUP_KMS_KEY_ID == '' || vars.AWS_REGION == '' }}
+    steps:
+      - run: echo "تم تخطي النسخ الاحتياطي بأمان؛ أضف أسرار AWS وقاعدة البيانات لتفعيله في الإنتاج."
