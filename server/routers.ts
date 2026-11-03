@@ -26,6 +26,8 @@ import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_
 import { getSessionCookieOptions } from "./_core/cookies";
 import { COOKIE_NAME } from "@shared/const";
 import { createSessionTitle, extractAssistantText, isSupportedAudio } from "./workspaceUtils";
+import { buildWorkspaceSessionMarkdown, createWorkspaceMarkdownFilename } from "./workspaceExport";
+import { getProExportEntitlement, getProExportPurchaseStatus } from "./_core/proExportEntitlement";
 import { systemRouter } from "./_core/systemRouter";
 import { getCapability } from "./_core/capabilities";
 import { GITHUB_WORKSPACE_TOOLS, executeWorkspaceTool, isWorkspaceToolCall } from "./_core/workspaceTools";
@@ -34,6 +36,9 @@ const MAX_FILE_BYTES = 16 * 1024 * 1024;
 const MAX_HISTORY_MESSAGES = 30;
 const MAX_MEMORY_RESULTS = 5;
 const MAX_TEXT_FILE_CHARS = 120_000;
+const MAX_EXPORT_MESSAGES = 1_000;
+const MAX_EXPORT_FILES = 250;
+const MAX_EXPORT_SOURCE_CHARS = 1_500_000;
 const PREFERRED_LLM_MODELS = ["gpt-5-mini", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.6-flash"];
 const FALLBACK_LLM_MODEL = process.env.LLM_MODEL || "gpt-5-mini";
 const TEXT_FILE_MIME_TYPES = new Set([
@@ -98,6 +103,15 @@ async function requireOwnedSession(sessionId: number, userId: number) {
   const session = await getWorkspaceSessionForUser(sessionId, userId);
   if (!session) throw notFound("لم يتم العثور على الجلسة المطلوبة.");
   return session;
+}
+
+async function requireProExportEntitlement(userId: number) {
+  const entitlement = await getProExportEntitlement(userId);
+  if (entitlement.granted) return;
+  if (entitlement.reason === "unavailable") {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "تعذّر التحقق من اشتراك Pro على الخادم؛ لم يُنشأ أي تصدير." });
+  }
+  throw new TRPCError({ code: "PRECONDITION_FAILED", message: "تصدير Markdown يتطلب اشتراك Pro موثّقًا من الخادم. إعداد شراء الاشتراك ما زال مطلوبًا." });
 }
 
 function buildConversationMemory(content: string, results: Awaited<ReturnType<typeof listRecentWorkspaceResults>>) {
@@ -216,6 +230,41 @@ export const appRouter = router({
           await requireOwnedSession(input.sessionId, ctx.user.id);
           await archiveWorkspaceSession(input.sessionId, ctx.user.id);
           return { success: true } as const;
+        }),
+    }),
+
+    exports: router({
+      status: protectedProcedure.query(async ({ ctx }) => {
+        const entitlement = await getProExportEntitlement(ctx.user.id);
+        return {
+          canExport: entitlement.granted,
+          entitlement: entitlement.reason,
+          purchase: getProExportPurchaseStatus(),
+        };
+      }),
+      markdown: protectedProcedure
+        .input(z.object({ sessionId: z.number().int().positive() }))
+        .mutation(async ({ ctx, input }) => {
+          const session = await requireOwnedSession(input.sessionId, ctx.user.id);
+          await requireProExportEntitlement(ctx.user.id);
+          const [messages, files] = await Promise.all([
+            listWorkspaceMessages(input.sessionId, MAX_EXPORT_MESSAGES + 1),
+            listWorkspaceFilesForSession(input.sessionId, ctx.user.id, MAX_EXPORT_FILES + 1),
+          ]);
+          if (messages.length > MAX_EXPORT_MESSAGES || files.length > MAX_EXPORT_FILES) {
+            throw inputError("الجلسة كبيرة جدًا للتصدير دفعة واحدة. قلّل الرسائل أو المرفقات ثم حاول مجددًا.");
+          }
+          const sourceChars = session.title.length
+            + messages.reduce((total, message) => total + message.content.length, 0)
+            + files.reduce((total, file) => total + file.fileName.length, 0);
+          if (sourceChars > MAX_EXPORT_SOURCE_CHARS) {
+            throw inputError("نص الجلسة أكبر من الحد الآمن للتصدير. اختصر الجلسة ثم حاول مجددًا.");
+          }
+          const exportedAt = new Date();
+          return {
+            fileName: createWorkspaceMarkdownFilename(exportedAt),
+            markdown: buildWorkspaceSessionMarkdown({ session, messages, files, exportedAt }),
+          };
         }),
     }),
 

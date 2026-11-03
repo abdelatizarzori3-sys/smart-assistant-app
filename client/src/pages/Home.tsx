@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import {
+  Download,
   FileText,
   FolderOpen,
   Loader2,
@@ -109,6 +110,23 @@ export default function Home() {
       if (activeSessionId) void utils.workspace.files.listForSession.invalidate({ sessionId: activeSessionId });
     },
     onError: error => toast.error(error.message || "تعذّر رفع الملف."),
+  });
+  const exportStatusQuery = trpc.workspace.exports.status.useQuery();
+  const exportMarkdown = trpc.workspace.exports.markdown.useMutation({
+    onSuccess: result => {
+      const blob = new Blob([result.markdown], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = result.fileName;
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success("تم تنزيل نسخة Markdown من هذه الجلسة.");
+    },
+    onError: error => toast.error(error.message || "تعذّر تصدير الجلسة."),
   });
 
   const sessions = sessionsQuery.data?.filter(session => session.status === "active") ?? [];
@@ -222,7 +240,15 @@ export default function Home() {
     setIsRecording(false);
   };
 
-  const isBusy = createSession.isPending || sendMessage.isPending || uploadFile.isPending || transcribeVoice.isPending;
+  const exportActiveSession = () => {
+    if (!activeSessionId) {
+      toast.error("اختر جلسة تحتوي على رسائل لتصديرها.");
+      return;
+    }
+    exportMarkdown.mutate({ sessionId: activeSessionId });
+  };
+
+  const isBusy = createSession.isPending || sendMessage.isPending || uploadFile.isPending || transcribeVoice.isPending || exportMarkdown.isPending;
 
   return (
     <div className={conversationStarted ? "w-full" : "mx-auto max-w-[1550px]"} dir="rtl">
@@ -250,7 +276,17 @@ export default function Home() {
                 <p className="mt-0.5 text-[11px] text-[#85908a]">{activeSession ? "يُحفظ السياق تلقائيًا" : "أنشئ جلسة أو أرسل طلبك للبدء"}</p>
               </div>
             </div>
-            <Badge variant="outline" className="border-[#ead5ca] bg-[#fff9f5] text-[11px] font-semibold text-[#a75534]">مساعد ذكي</Badge>
+            <div className="flex items-center gap-2">
+              <div className="hidden text-left sm:block">
+                <p className="text-[10px] font-bold text-[#a75534]">تصدير Markdown · Pro</p>
+                <p className="mt-0.5 text-[10px] text-[#85908a]">{exportStatusQuery.data?.canExport ? "يشمل الرسائل وأسماء المرفقات فقط" : "إعداد شراء الاشتراك مطلوب"}</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={exportActiveSession} disabled={!activeSessionId || exportMarkdown.isPending} className="rounded-xl border-[#d8e2d9] bg-white text-[#34503e] hover:bg-[#eef4ef]">
+                {exportMarkdown.isPending ? <Loader2 className="ml-1.5 size-3.5 animate-spin" /> : <Download className="ml-1.5 size-3.5" />}
+                تصدير Markdown
+              </Button>
+              <Badge variant="outline" className="border-[#ead5ca] bg-[#fff9f5] text-[11px] font-semibold text-[#a75534]">مساعد ذكي</Badge>
+            </div>
           </div>
 
           {(attachedFiles.length > 0 || pendingFiles.length > 0) && (
