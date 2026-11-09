@@ -83,3 +83,65 @@
   .workspace-card { @apply rounded-[1.4rem] border border-[#e1ded5] bg-[#fbfaf7] shadow-[0_16px_45px_-24px_rgba(42,51,43,0.28)]; }
   .workspace-kicker { @apply text-[11px] font-bold tracking-[0.14em] text-[#bd653e]; }
 }
+
+
+/* Future interface: orbital workspace */
+.orbital-workspace {
+  --orbit-signal: #6953ba;
+  --orbit-focus: #6543b0;
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 82% 5%, rgba(147, 121, 228, .18), transparent 28rem),
+    radial-gradient(circle at 12% 76%, rgba(102, 202, 179, .14), transparent 32rem),
+    #f4f2fa;
+}
+
+.orbital-workspace::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .3;
+  background: radial-gradient(circle, rgba(105, 83, 186, .5) 0 1px, transparent 1.5px);
+  background-size: 3.2rem 3.2rem;
+  mask-image: linear-gradient(#000, transparent 80%);
+}
+
+/* Retain light cards and nested surfaces so their existing dark labels stay readable. */
+.orbital-workspace .workspace-card {
+  border-color: rgba(105, 83, 186, .24);
+  background: linear-gradient(145deg, rgba(255, 255, 255, .96), rgba(244, 240, 255, .94));
+  box-shadow: 0 1.2rem 3.8rem rgba(45, 31, 91, .1), inset 0 1px rgba(255, 255, 255, .8);
+}
+
+.orbital-workspace .workspace-kicker {
+  color: #574697;
+  letter-spacing: .16em;
+}
+
+.orbital-workspace button.bg-\[\#24332b\],
+.orbital-workspace button.bg-\[\#31513a\] {
+  background: linear-gradient(135deg, #a99cff, #79f2d0);
+  color: #11102b;
+  box-shadow: 0 .7rem 1.8rem rgba(140, 126, 255, .2);
+}
+
+.orbital-workspace button:focus-visible,
+.orbital-workspace input:focus-visible,
+.orbital-workspace textarea:focus-visible,
+.orbital-workspace select:focus-visible,
+.orbital-workspace a:focus-visible {
+  outline: 2px solid var(--orbit-focus);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbital-workspace *,
+  .orbital-workspace *::before,
+  .orbital-workspace *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}

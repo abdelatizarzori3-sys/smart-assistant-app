@@ -67,7 +67,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [sidebarWidth]);
   if (loading && !previewMode) return <DashboardLayoutSkeleton />;
   return (
-    <SidebarProvider style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
+    <SidebarProvider className="orbital-workspace" style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
       <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>{children}</DashboardLayoutContent>
     </SidebarProvider>
   );
@@ -196,11 +196,11 @@ function DashboardLayoutContent({
             <div className="flex items-center gap-3 rounded-[1.2rem] border border-[#e5e1d8] bg-[#f5f3ee] p-2.5">
               <Avatar className="size-9 border border-[#e7dbce] bg-[#fff9f6] text-[#24332b]">
                 <AvatarFallback className="bg-transparent text-xs font-black">
-                  {displayedUser.name.slice(0, 2).toUpperCase()}
+                  {(displayedUser.name?.trim() || "مساحتي").slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-                <p className="truncate text-sm font-extrabold text-[#1d2c27]">{displayedUser.name}</p>
+                <p className="truncate text-sm font-extrabold text-[#1d2c27]">{displayedUser.name?.trim() || "مساحتي"}</p>
                 <p className="truncate text-[11px] text-[#7a817c]">{displayedUser.email}</p>
               </div>
               <DropdownMenu>
